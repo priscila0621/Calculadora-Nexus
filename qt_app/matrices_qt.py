@@ -270,7 +270,7 @@ class SumaMatricesWindow(_BaseMatrixWindow):
         self.scalars_container.setObjectName("ScalarsPanel")
         self.scalars_container.setStyleSheet(
             "QFrame#ScalarsPanel {"
-            "background-color: rgba(255, 255, 255, 0.85);"
+            "background-color: transparent;"
             "border: 1px solid rgba(176, 122, 140, 0.35);"
             "border-radius: 12px;"
             "}"
@@ -279,7 +279,6 @@ class SumaMatricesWindow(_BaseMatrixWindow):
         self.scalars_layout.setContentsMargins(18, 10, 18, 10)
         self.scalars_layout.setSpacing(12)
         info_lbl = QLabel("Escalares por matriz (deja 1 si no aplica):")
-        info_lbl.setObjectName("Subtitle")
         self.scalars_layout.addWidget(info_lbl)
         self.scalars_controls_layout = QHBoxLayout()
         self.scalars_controls_layout.setContentsMargins(0, 0, 0, 0)
