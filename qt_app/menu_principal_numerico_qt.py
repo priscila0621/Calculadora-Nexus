@@ -34,7 +34,7 @@ class MenuNumericoPrincipalWindow(QMainWindow):
         super().__init__(parent)
         self._on_exit = on_exit
         self._exit_notified = False
-        self.setWindowTitle("Análisis numérico")
+        self.setWindowTitle("Métodos numéricos")
 
         root = QWidget()
         self.setCentralWidget(root)
@@ -97,7 +97,7 @@ class MenuNumericoPrincipalWindow(QMainWindow):
         nav_lay.addWidget(back_btn, 0, Qt.AlignLeft)
 
         # Forzar salto de linea para que no se corte el título
-        nav_title = QLabel("Análisis\nnumérico")
+        nav_title = QLabel("Métodos\nnuméricos")
         nav_title.setObjectName("Title")
         nav_title.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         nav_title.setWordWrap(True)
@@ -176,13 +176,13 @@ class MenuNumericoPrincipalWindow(QMainWindow):
         hero.addWidget(logo, 0, Qt.AlignTop)
 
         title_box = QVBoxLayout()
-        heading = QLabel("Nexus Linear - Análisis numérico")
+        heading = QLabel("Nexus Linear - Métodos numéricos")
         heading.setObjectName("Title")
         title_box.addWidget(heading)
 
         strapline = QLabel(
-            "Herramientas de analisis numerico con enfoque practico. "
-            "Explora biseccion, falsa posicion, secante y Newton-Raphson desde una sola vista."
+            "Herramientas de métodos numéricos con enfoque práctico. "
+            "Explora bisección, falsa posición, secante y Newton-Raphson desde una sola vista."
         )
         strapline.setObjectName("Subtitle")
         strapline.setWordWrap(True)
@@ -212,7 +212,7 @@ class MenuNumericoPrincipalWindow(QMainWindow):
         content_lay.addWidget(info_title)
 
         info_body = QLabel(
-            "Este módulo reúne técnicas de análisis numérico orientadas a la docencia y práctica profesional. "
+            "Este módulo reúne técnicas de métodos numéricos orientadas a la docencia y práctica profesional. "
             "A medida que integremos nuevos métodos, aparecerán en la navegación lateral."
         )
         info_body.setWordWrap(True)

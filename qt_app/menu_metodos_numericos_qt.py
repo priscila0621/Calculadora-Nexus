@@ -97,7 +97,7 @@ class MenuMetodosNumericosWindow(QMainWindow):
         card_layout.addWidget(title)
 
         subtitle = QLabel(
-            "Centraliza tecnicas de analisis numerico para aproximar raices y resolver problemas complejos "
+            "Centraliza técnicas de métodos numéricos para aproximar raíces y resolver problemas complejos "
             "de forma guiada. Selecciona un metodo desde la barra superior para comenzar."
         )
         subtitle.setObjectName("Subtitle")
