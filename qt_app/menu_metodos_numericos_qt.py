@@ -71,7 +71,7 @@ class MenuMetodosNumericosWindow(QMainWindow):
         more_btn = QToolButton()
         more_btn.setAutoRaise(True)
         more_btn.setCursor(Qt.PointingHandCursor)
-        more_btn.setToolTip("Mas opciones")
+        more_btn.setToolTip("Más opciones")
         more_btn.setPopupMode(QToolButton.InstantPopup)
         try:
             bind_theme_icon(more_btn, make_overflow_icon, 20)
@@ -79,10 +79,10 @@ class MenuMetodosNumericosWindow(QMainWindow):
         except Exception:
             pass
         menu = QMenu(more_btn)
-        act_settings = menu.addAction(gear_icon_preferred(22), "Configuracion")
+        act_settings = menu.addAction(gear_icon_preferred(22), "Configuración")
         act_settings.triggered.connect(self._open_settings)
         more_btn.setMenu(menu)
-        top_layout.addWidget(more_btn, 0, Qt.AlignVCenter)
+        top_layout.addWidget(more_btn, 0, Qt.AlignRight)
 
         outer.addWidget(top_bar)
 

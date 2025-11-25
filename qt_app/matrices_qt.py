@@ -1,11 +1,12 @@
 ﻿from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QScrollArea, QGridLayout, QLineEdit, QTextEdit, QMessageBox, QFrame,
-    QRadioButton, QCheckBox
+    QRadioButton, QCheckBox, QToolButton, QMenu
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QSize
 from fractions import Fraction
-from .theme import bind_font_scale_stylesheet
+from .theme import bind_font_scale_stylesheet, bind_theme_icon, make_overflow_icon, gear_icon_preferred
+from .settings_qt import open_settings_dialog
 
 
 def _parse_fraction(s: str) -> Fraction:
@@ -43,11 +44,32 @@ class _BaseMatrixWindow(QMainWindow):
         self.lay.setContentsMargins(24, 24, 24, 24)
         self.lay.setSpacing(14)
 
+        topbar = QHBoxLayout()
+        topbar.setContentsMargins(0, 0, 0, 0)
+        topbar.addStretch(1)
+        more_btn = QToolButton()
+        more_btn.setAutoRaise(True)
+        more_btn.setCursor(Qt.PointingHandCursor)
+        more_btn.setToolTip("Más opciones")
+        more_btn.setPopupMode(QToolButton.InstantPopup)
+        try:
+            bind_theme_icon(more_btn, make_overflow_icon, 20)
+            more_btn.setIconSize(QSize(20, 20))
+        except Exception:
+            pass
+        menu = QMenu(more_btn)
+        act_settings = menu.addAction(gear_icon_preferred(22), "Configuración")
+        act_settings.triggered.connect(self._open_settings)
+        more_btn.setMenu(menu)
+        topbar.addWidget(more_btn, 0, Qt.AlignRight)
+        self.lay.addLayout(topbar)
+
         hdr = QLabel(title)
         hdr.setObjectName("Title")
         self.lay.addWidget(hdr)
 
         top = QHBoxLayout()
+        self.top_controls = top  # referencia para que subclases agreguen controles de tamaño
         self.lay.addLayout(top)
         self.f_edit = QLineEdit("2"); self.f_edit.setFixedWidth(60); self.f_edit.setAlignment(Qt.AlignCenter)
         self.c_edit = QLineEdit("2"); self.c_edit.setFixedWidth(60); self.c_edit.setAlignment(Qt.AlignCenter)
@@ -92,6 +114,12 @@ class _BaseMatrixWindow(QMainWindow):
         self.entries = []
         try:
             self.op_label.setText("Operacion: Multiplicacion (A x B)")
+        except Exception:
+            pass
+
+    def _open_settings(self):
+        try:
+            open_settings_dialog(self)
         except Exception:
             pass
 
@@ -198,8 +226,8 @@ class SumaMatricesWindow(_BaseMatrixWindow):
     def __init__(self, parent=None):
         super().__init__("Suma de Matrices", parent)
         self.num_edit = QLineEdit("2"); self.num_edit.setFixedWidth(60); self.num_edit.setAlignment(Qt.AlignCenter)
-        self.lay.itemAt(1).layout().insertWidget(0, QLabel("Nº matrices:"))
-        self.lay.itemAt(1).layout().insertWidget(1, self.num_edit)
+        self.top_controls.insertWidget(0, QLabel("Nº matrices:"))
+        self.top_controls.insertWidget(1, self.num_edit)
         self.scalars_container = QFrame()
         self.scalars_container.setObjectName("ScalarsPanel")
         self.scalars_container.setStyleSheet(
@@ -219,7 +247,10 @@ class SumaMatricesWindow(_BaseMatrixWindow):
         self.scalars_controls_layout.setContentsMargins(0, 0, 0, 0)
         self.scalars_controls_layout.setSpacing(8)
         self.scalars_layout.addLayout(self.scalars_controls_layout, 1)
-        self.lay.insertWidget(2, self.scalars_container)
+        insert_pos = self.lay.indexOf(self.scroll)
+        if insert_pos == -1:
+            insert_pos = self.lay.count()
+        self.lay.insertWidget(insert_pos, self.scalars_container)
 
         self.scalar_controls = []
         try:
@@ -478,9 +509,9 @@ class RestaMatricesWindow(SumaMatricesWindow):
 class MultiplicacionMatricesWindow(_BaseMatrixWindow):
     def __init__(self, parent=None):
         super().__init__("Multiplicacion de Matrices", parent)
-        # Para multiplicaciÃ³n pedimos A (f x c) y B (c x p)
+        # Para multiplicación pedimos A (f x c) y B (c x p)
         self.p_edit = QLineEdit("2"); self.p_edit.setFixedWidth(60); self.p_edit.setAlignment(Qt.AlignCenter)
-        row = self.lay.itemAt(1).layout()
+        row = self.top_controls
         row.addSpacing(12); row.addWidget(QLabel("Columnas B:")); row.addWidget(self.p_edit)
         # Escalares opcionales por matriz
         row.addSpacing(18)

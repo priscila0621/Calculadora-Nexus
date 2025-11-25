@@ -112,11 +112,12 @@ class GaussJordanWindow(QMainWindow):
         self.btn_ingresar_ecuaciones.clicked.connect(self._open_ecuaciones_dialog)
         top.addWidget(self.btn_ingresar_ecuaciones)
         top.addSpacing(18)
+        top.addStretch(1)
         more_btn = QToolButton()
-        # sin tama�o fijo
+        # sin tama\u00f1o fijo
         more_btn.setAutoRaise(True)
         more_btn.setCursor(Qt.PointingHandCursor)
-        more_btn.setToolTip("M�s opciones")
+        more_btn.setToolTip("M\u00e1s opciones")
         more_btn.setPopupMode(QToolButton.InstantPopup)
         try:
             from PySide6.QtCore import QSize
@@ -127,13 +128,12 @@ class GaussJordanWindow(QMainWindow):
             pass
         menu = QMenu(more_btn)
         try:
-            act_settings = menu.addAction(gear_icon_preferred(22), "Configuraci�n")
+            act_settings = menu.addAction(gear_icon_preferred(22), "Configuraci\u00f3n")
         except Exception:
-            act_settings = menu.addAction("Configuraci�n")
+            act_settings = menu.addAction("Configuraci\u00f3n")
         act_settings.triggered.connect(self._open_settings)
         more_btn.setMenu(menu)
-        top.addWidget(more_btn)
-        top.addStretch(1)
+        top.addWidget(more_btn, 0, Qt.AlignRight)
 
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)

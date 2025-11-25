@@ -10,11 +10,14 @@ from PySide6.QtWidgets import (
     QTextEdit,
     QFrame,
     QMessageBox,
+    QToolButton,
+    QMenu,
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QTextCursor
 from fractions import Fraction
-from .theme import bind_font_scale_stylesheet
+from .theme import bind_font_scale_stylesheet, bind_theme_icon, make_overflow_icon, gear_icon_preferred
+from .settings_qt import open_settings_dialog
 
 
 def _parse_fraction(s: str) -> Fraction:
@@ -49,6 +52,26 @@ class OperacionesMatricesWindow(QMainWindow):
         root.setContentsMargins(24, 24, 24, 24)
         root.setSpacing(12)
 
+        topbar = QHBoxLayout()
+        topbar.setContentsMargins(0, 0, 0, 0)
+        topbar.addStretch(1)
+        more_btn = QToolButton()
+        more_btn.setAutoRaise(True)
+        more_btn.setCursor(Qt.PointingHandCursor)
+        more_btn.setToolTip("Más opciones")
+        more_btn.setPopupMode(QToolButton.InstantPopup)
+        try:
+            bind_theme_icon(more_btn, make_overflow_icon, 20)
+            more_btn.setIconSize(QSize(20, 20))
+        except Exception:
+            pass
+        menu = QMenu(more_btn)
+        act_settings = menu.addAction(gear_icon_preferred(22), "Configuración")
+        act_settings.triggered.connect(self._open_settings)
+        more_btn.setMenu(menu)
+        topbar.addWidget(more_btn, 0, Qt.AlignRight)
+        root.addLayout(topbar)
+
         title = QLabel("Algebra de matrices y vectores")
         title.setObjectName("Title")
         root.addWidget(title)
@@ -80,6 +103,12 @@ class OperacionesMatricesWindow(QMainWindow):
         content.addLayout(right, 1)
         right.addWidget(self._build_expression_card())
         right.addWidget(self._build_result_card(), 1)
+
+    def _open_settings(self):
+        try:
+            open_settings_dialog(self)
+        except Exception:
+            pass
 
     # ---------------- UI ----------------
     def _card(self, title: str):

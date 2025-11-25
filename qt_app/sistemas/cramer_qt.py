@@ -155,22 +155,6 @@ class CramerWindow(QMainWindow):
         row_controls.addWidget(self.row_value_label)
         row_layout.addLayout(row_controls)
         top.addWidget(row_container)
-        top.addSpacing(18)
-        more_btn = QToolButton()
-        more_btn.setAutoRaise(True)
-        more_btn.setCursor(Qt.PointingHandCursor)
-        more_btn.setToolTip('M�s opciones')
-        more_btn.setPopupMode(QToolButton.InstantPopup)
-        try:
-            bind_theme_icon(more_btn, make_overflow_icon, 20)
-            more_btn.setIconSize(QSize(20, 20))
-        except Exception:
-            pass
-        menu = QMenu(more_btn)
-        act_settings = menu.addAction(gear_icon_preferred(22), 'Configuraci�n')
-        act_settings.triggered.connect(self._open_settings)
-        more_btn.setMenu(menu)
-        top.addWidget(more_btn)
         col_container = QWidget()
         col_layout = QVBoxLayout(col_container)
         col_layout.setContentsMargins(0, 0, 0, 0)
@@ -206,10 +190,11 @@ class CramerWindow(QMainWindow):
         self.btn_ingresar_ecuaciones.clicked.connect(self._open_ecuaciones_dialog)
         top.addWidget(self.btn_ingresar_ecuaciones)
         top.addSpacing(18)
+        top.addStretch(1)
         more_btn = QToolButton()
         more_btn.setAutoRaise(True)
         more_btn.setCursor(Qt.PointingHandCursor)
-        more_btn.setToolTip('M�s opciones')
+        more_btn.setToolTip('Más opciones')
         more_btn.setPopupMode(QToolButton.InstantPopup)
         try:
             bind_theme_icon(more_btn, make_overflow_icon, 20)
@@ -217,12 +202,10 @@ class CramerWindow(QMainWindow):
         except Exception:
             pass
         menu = QMenu(more_btn)
-        act_settings = menu.addAction(gear_icon_preferred(22), 'Configuraci�n')
+        act_settings = menu.addAction(gear_icon_preferred(22), 'Configuración')
         act_settings.triggered.connect(self._open_settings)
         more_btn.setMenu(menu)
-        top.addWidget(more_btn)
-        # Ajuste: bot�n de configuraci�n reemplazado por men� ?
-        top.addStretch(1)
+        top.addWidget(more_btn, 0, Qt.AlignRight)
 
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)
