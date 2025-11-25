@@ -878,6 +878,25 @@ class TranspuestaMatrizWindow(_BaseMatrixWindow):
             self.setCentralWidget(wrapper)
         except Exception:
             pass
+        # Botón compacto para abrir la matriz resultante en ventana ampliada
+        self._last_transpose = None
+        try:
+            expand_row = QHBoxLayout()
+            expand_row.setContentsMargins(0, 0, 0, 0)
+            expand_row.addStretch(1)
+            self.expand_btn = QToolButton()
+            self.expand_btn.setText("⤢")  # similar a maximizar
+            self.expand_btn.setToolTip("Ver matriz resultante en ventana")
+            self.expand_btn.setAutoRaise(True)
+            self.expand_btn.clicked.connect(self._open_expanded_result)
+            expand_row.addWidget(self.expand_btn, 0, Qt.AlignRight)
+            insert_at = self.actions_layout.indexOf(self.btn_run) + 1 if hasattr(self, "actions_layout") else -1
+            if insert_at >= 0:
+                self.actions_layout.insertLayout(insert_at, expand_row)
+            else:
+                self.actions_layout.addLayout(expand_row)
+        except Exception:
+            pass
 
     def _run(self):
         A = self._leer()
@@ -899,13 +918,6 @@ class TranspuestaMatrizWindow(_BaseMatrixWindow):
         for line in pasos:
             self.result_box.insertPlainText(line + "\n")
         self._last_transpose = T
-        # Botón para abrir la matriz resultante en ventana ampliada
-        try:
-            expand_btn = QPushButton("Abrir matriz resultante en ventana")
-            expand_btn.clicked.connect(self._open_expanded_result)
-            self.actions_layout.insertWidget(self.actions_layout.indexOf(self.btn_run)+1, expand_btn)
-        except Exception:
-            pass
 
     def _open_expanded_result(self):
         T = getattr(self, "_last_transpose", None)
