@@ -285,10 +285,11 @@ class SumaMatricesWindow(_BaseMatrixWindow):
         self.scalars_controls_layout.setContentsMargins(0, 0, 0, 0)
         self.scalars_controls_layout.setSpacing(8)
         self.scalars_layout.addLayout(self.scalars_controls_layout, 1)
-        insert_pos = self.lay.indexOf(self.scroll)
-        if insert_pos == -1:
-            insert_pos = self.lay.count()
-        self.lay.insertWidget(insert_pos, self.scalars_container)
+        # Ubicar a la derecha del botón "Crear matrices"
+        try:
+            self.top_controls.insertWidget(self.top_controls.count() - 1, self.scalars_container, 0)
+        except Exception:
+            self.top_controls.addWidget(self.scalars_container)
 
         self.scalar_controls = []
         try:
