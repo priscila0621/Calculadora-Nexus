@@ -1,7 +1,7 @@
 ﻿from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QScrollArea, QGridLayout, QLineEdit, QTextEdit, QMessageBox, QFrame,
-    QRadioButton, QCheckBox, QToolButton, QMenu, QSizePolicy
+    QRadioButton, QCheckBox, QToolButton, QMenu, QSizePolicy, QDialog
 )
 from PySide6.QtCore import Qt, QSize
 from fractions import Fraction
@@ -123,9 +123,9 @@ class _BaseMatrixWindow(QMainWindow):
         self.result_box.setMinimumHeight(120)
         self.lay.addWidget(self.result_box, 1)
 
-        # Ajustar proporciones para dar más espacio a la grilla de ingreso
+        # Ajustar proporciones para dar más espacio a la grilla de ingreso sin dejar vacíos enormes
         try:
-            self.lay.setStretch(self.lay.indexOf(self.actions_layout), 10)
+            self.lay.setStretch(self.lay.indexOf(self.actions_layout), 2)
             self.lay.setStretch(self.lay.indexOf(self.result_matrix_area), 1)
             self.lay.setStretch(self.lay.indexOf(self.result_box), 1)
         except Exception:
@@ -166,12 +166,12 @@ class _BaseMatrixWindow(QMainWindow):
 
     def _update_input_min_height(self, rows: int):
         """Ajusta la altura mínima del área de entrada según la cantidad de filas."""
-        approx = rows * 70 + 320  # celdas más altas + padding generoso
-        # Garantizar espacio suficiente para ver al menos 5 filas sin scroll
-        target = max(1000, min(1600, approx))
+        approx = rows * 56 + 140  # altura estimada por fila + padding compacto
+        # Pensado para ver hasta ~10 filas sin dejar vacíos grandes
+        target = max(320, min(750, approx))
         self.scroll.setMinimumHeight(target)
         try:
-            self.scrollw.setMinimumHeight(max(0, target - 40))
+            self.scrollw.setMinimumHeight(max(0, target - 120))
         except Exception:
             pass
 
@@ -575,6 +575,20 @@ class RestaMatricesWindow(SumaMatricesWindow):
 class MultiplicacionMatricesWindow(_BaseMatrixWindow):
     def __init__(self, parent=None):
         super().__init__("Multiplicacion de Matrices", parent)
+        # Habilitar scroll vertical para toda la ventana cuando hay muchas filas
+        try:
+            inner = self.centralWidget()
+            scroll_host = QScrollArea()
+            scroll_host.setWidgetResizable(True)
+            scroll_host.setWidget(inner)
+            wrapper = QWidget()
+            wrap_lay = QVBoxLayout(wrapper)
+            wrap_lay.setContentsMargins(0, 0, 0, 0)
+            wrap_lay.setSpacing(4)
+            wrap_lay.addWidget(scroll_host)
+            self.setCentralWidget(wrapper)
+        except Exception:
+            pass
         # Para multiplicación pedimos A (f x c) y B (c x p)
         self.p_edit = QLineEdit("2"); self.p_edit.setFixedWidth(60); self.p_edit.setAlignment(Qt.AlignCenter)
         row = self.top_controls
@@ -588,12 +602,15 @@ class MultiplicacionMatricesWindow(_BaseMatrixWindow):
         row.addSpacing(8)
         self.scalarB_edit = QLineEdit("1"); self.scalarB_edit.setFixedWidth(70); self.scalarB_edit.setAlignment(Qt.AlignCenter)
         row.addWidget(QLabel("Escalar B:")); row.addWidget(self.scalarB_edit)
+        try:
+            self.actions_layout.setSpacing(8)
+        except Exception:
+            pass
         # Encadenar: botón para usar el último resultado como A
         self._last_result = None
         self._chain_btn = QPushButton("Usar resultado como A")
         self._chain_btn.setEnabled(False)
         self._chain_btn.clicked.connect(self._use_result_as_A)
-        self.lay.addWidget(self._chain_btn)
         # Botones para sumar/restar con otra matriz del mismo tamaño
         chain_row = QHBoxLayout()
         self._chain_add_btn = QPushButton("Sumar resultado con otra matriz")
@@ -604,7 +621,12 @@ class MultiplicacionMatricesWindow(_BaseMatrixWindow):
         self._chain_sub_btn.clicked.connect(lambda: self._prepare_add_sub('sub'))
         chain_row.addWidget(self._chain_add_btn)
         chain_row.addWidget(self._chain_sub_btn)
-        self.lay.addLayout(chain_row)
+        # Colocar los botones justo debajo de las matrices dentro del mismo bloque
+        try:
+            self.actions_layout.addWidget(self._chain_btn, 0, Qt.AlignLeft)
+        except Exception:
+            self.actions_layout.addWidget(self._chain_btn)
+        self.actions_layout.addLayout(chain_row)
 
     def _setup_entries(self):
         for i in reversed(range(self.grid.count())):
@@ -842,6 +864,20 @@ class MultiplicacionMatricesWindow(_BaseMatrixWindow):
 class TranspuestaMatrizWindow(_BaseMatrixWindow):
     def __init__(self, parent=None):
         super().__init__("Transpuesta de Matriz", parent)
+        # Envolver todo el contenido con scroll general
+        try:
+            inner = self.centralWidget()
+            scroll_host = QScrollArea()
+            scroll_host.setWidgetResizable(True)
+            scroll_host.setWidget(inner)
+            wrapper = QWidget()
+            wrap_lay = QVBoxLayout(wrapper)
+            wrap_lay.setContentsMargins(0, 0, 0, 0)
+            wrap_lay.setSpacing(4)
+            wrap_lay.addWidget(scroll_host)
+            self.setCentralWidget(wrapper)
+        except Exception:
+            pass
 
     def _run(self):
         A = self._leer()
@@ -862,11 +898,63 @@ class TranspuestaMatrizWindow(_BaseMatrixWindow):
         self.result_box.insertPlainText("Pasos detallados\n")
         for line in pasos:
             self.result_box.insertPlainText(line + "\n")
+        self._last_transpose = T
+        # Botón para abrir la matriz resultante en ventana ampliada
+        try:
+            expand_btn = QPushButton("Abrir matriz resultante en ventana")
+            expand_btn.clicked.connect(self._open_expanded_result)
+            self.actions_layout.insertWidget(self.actions_layout.indexOf(self.btn_run)+1, expand_btn)
+        except Exception:
+            pass
+
+    def _open_expanded_result(self):
+        T = getattr(self, "_last_transpose", None)
+        if not T:
+            QMessageBox.information(self, "Sin resultado", "Primero calcula la transpuesta.")
+            return
+        try:
+            dlg = QDialog(self)
+            dlg.setWindowTitle("Matriz resultante (Transpuesta)")
+            lay = QVBoxLayout(dlg)
+            scroll = QScrollArea()
+            scroll.setWidgetResizable(True)
+            scroll.setWidget(_matrix_widget(self, T))
+            lay.addWidget(scroll)
+            dlg.resize(640, 480)
+            dlg.exec()
+        except Exception:
+            pass
 
 
 class DeterminanteMatrizWindow(_BaseMatrixWindow):
     def __init__(self, parent=None):
         super().__init__("Determinante de Matriz", parent)
+        # En determinante queremos que los resultados queden justo debajo del botón y con scroll general
+        try:
+            # Eliminar el panel de matriz resultante (no se usa aquí) para evitar huecos
+            self.lay.removeWidget(self.result_matrix_area)
+            self.result_matrix_area.setParent(None)
+            # Mover el cuadro de resultados debajo del botón Calcular
+            self.lay.removeWidget(self.result_box)
+            self.result_box.setMinimumHeight(200)
+            self.actions_layout.setSpacing(6)
+            self.actions_layout.addWidget(self.result_box)
+            self.actions_layout.addStretch(1)
+        except Exception:
+            pass
+        try:
+            inner = self.centralWidget()
+            scroll_host = QScrollArea()
+            scroll_host.setWidgetResizable(True)
+            scroll_host.setWidget(inner)
+            wrapper = QWidget()
+            wrap_lay = QVBoxLayout(wrapper)
+            wrap_lay.setContentsMargins(0, 0, 0, 0)
+            wrap_lay.setSpacing(0)
+            wrap_lay.addWidget(scroll_host)
+            self.setCentralWidget(wrapper)
+        except Exception:
+            pass
 
     def _run(self):
         A = self._leer()
