@@ -103,6 +103,7 @@ class _BaseMatrixWindow(QMainWindow):
         self.actions_layout.addWidget(self.scroll, 1)
         self.actions_layout.addWidget(self.btn_run)
         self.lay.addLayout(self.actions_layout)
+        self._last_result_matrix = None
 
         # Área visual para mostrar la matriz resultante en cuadritos
         self.result_matrix_area = QScrollArea(); self.result_matrix_area.setWidgetResizable(True)
@@ -111,7 +112,22 @@ class _BaseMatrixWindow(QMainWindow):
         self.result_matrix_layout = QVBoxLayout(self.result_matrix_container)
         self.result_matrix_layout.setContentsMargins(6, 6, 6, 6)
         self.result_matrix_area.setWidget(self.result_matrix_container)
-        self.lay.addWidget(self.result_matrix_area)
+        self.matrix_expand_btn = QToolButton()
+        self.matrix_expand_btn.setText("⤢")
+        self.matrix_expand_btn.setToolTip("Abrir matriz resultante en ventana")
+        self.matrix_expand_btn.setAutoRaise(True)
+        self.matrix_expand_btn.clicked.connect(self._open_matrix_expanded)
+        self.result_matrix_block = QWidget()
+        block_lay = QVBoxLayout(self.result_matrix_block)
+        block_lay.setContentsMargins(0, 0, 0, 0)
+        block_lay.setSpacing(4)
+        header_row_m = QHBoxLayout()
+        header_row_m.setContentsMargins(0, 0, 0, 0)
+        header_row_m.addStretch(1)
+        header_row_m.addWidget(self.matrix_expand_btn, 0, Qt.AlignRight)
+        block_lay.addLayout(header_row_m)
+        block_lay.addWidget(self.result_matrix_area)
+        self.lay.addWidget(self.result_matrix_block)
 
         # Caja de texto con pasos/explicaciones (ya existente)
         self.result_box = QTextEdit(); self.result_box.setReadOnly(True)
@@ -144,7 +160,7 @@ class _BaseMatrixWindow(QMainWindow):
         # Ajustar proporciones para dar más espacio a la grilla de ingreso sin dejar vacíos enormes
         try:
             self.lay.setStretch(self.lay.indexOf(self.actions_layout), 2)
-            self.lay.setStretch(self.lay.indexOf(self.result_matrix_area), 1)
+            self.lay.setStretch(self.lay.indexOf(self.result_matrix_block), 1)
             self.lay.setStretch(self.lay.indexOf(self.result_container), 1)
         except Exception:
             pass
@@ -160,6 +176,25 @@ class _BaseMatrixWindow(QMainWindow):
             viewer.setPlainText(self.result_box.toPlainText())
             lay.addWidget(viewer)
             dlg.resize(720, 540)
+            dlg.exec()
+        except Exception:
+            pass
+
+    def _open_matrix_expanded(self):
+        """Abre la última matriz resultante en una ventana separada."""
+        M = getattr(self, "_last_result_matrix", None)
+        if not M:
+            QMessageBox.information(self, "Sin matriz", "Primero genera una matriz resultante.")
+            return
+        try:
+            dlg = QDialog(self)
+            dlg.setWindowTitle("Matriz resultante")
+            lay = QVBoxLayout(dlg)
+            scroll = QScrollArea()
+            scroll.setWidgetResizable(True)
+            scroll.setWidget(_matrix_widget(self, M))
+            lay.addWidget(scroll)
+            dlg.resize(640, 480)
             dlg.exec()
         except Exception:
             pass
@@ -297,6 +332,8 @@ class _BaseMatrixWindow(QMainWindow):
         self.result_matrix_layout.addWidget(lbl, 0)
         matw = _matrix_widget(self, M)
         self.result_matrix_layout.addWidget(matw, 1)
+        self._last_result_matrix = M
+        self._last_result_matrix = M
         # Desactivar scroll si la matriz es compacta; activar solo para anchos grandes
         rows = len(M)
         cols = len(M[0]) if rows else 0
@@ -977,8 +1014,8 @@ class DeterminanteMatrizWindow(_BaseMatrixWindow):
         # En determinante queremos que los resultados queden justo debajo del botón y con scroll general
         try:
             # Eliminar el panel de matriz resultante (no se usa aquí) para evitar huecos
-            self.lay.removeWidget(self.result_matrix_area)
-            self.result_matrix_area.setParent(None)
+            self.lay.removeWidget(self.result_matrix_block)
+            self.result_matrix_block.setParent(None)
             # Mover el cuadro de resultados debajo del botón Calcular
             self.lay.removeWidget(self.result_container)
             self.result_box.setMinimumHeight(200)
