@@ -278,7 +278,7 @@ class SumaMatricesWindow(_BaseMatrixWindow):
         self.scalars_layout = QHBoxLayout(self.scalars_container)
         self.scalars_layout.setContentsMargins(18, 10, 18, 10)
         self.scalars_layout.setSpacing(12)
-        info_lbl = QLabel("Escalares por matriz (opcional):")
+        info_lbl = QLabel("Escalares por matriz (deja 1 si no aplica):")
         info_lbl.setObjectName("Subtitle")
         self.scalars_layout.addWidget(info_lbl)
         self.scalars_controls_layout = QHBoxLayout()
@@ -308,22 +308,20 @@ class SumaMatricesWindow(_BaseMatrixWindow):
             return
         for idx in range(count):
             pair = QFrame()
-            pair_layout = QHBoxLayout(pair)
-            pair_layout.setContentsMargins(0, 0, 0, 0)
+            pair_layout = QVBoxLayout(pair)
+            pair_layout.setContentsMargins(4, 2, 4, 2)
             pair_layout.setSpacing(4)
-            lbl = QLabel(f"M{idx+1}:")
+            lbl = QLabel(f"k{idx+1}")
             lbl.setAlignment(Qt.AlignCenter)
+            lbl.setToolTip("Escalar a aplicar sobre la matriz correspondiente. Deja 1 si no aplica.")
             pair_layout.addWidget(lbl)
-            chk = QCheckBox(f"k{idx+1}")
-            chk.setToolTip("Activa para multiplicar la matriz por el escalar indicado.")
-            pair_layout.addWidget(chk)
             edit = QLineEdit("1")
             edit.setFixedWidth(70)
             edit.setAlignment(Qt.AlignCenter)
-            edit.setToolTip("Valor del escalar para esta matriz.")
+            edit.setToolTip("Valor del escalar (por defecto 1).")
             pair_layout.addWidget(edit)
             self.scalars_controls_layout.addWidget(pair)
-            self.scalar_controls.append((chk, edit))
+            self.scalar_controls.append(edit)
         self.scalars_controls_layout.addStretch(1)
 
     def _scale_matrices(self, matrices):
@@ -331,22 +329,16 @@ class SumaMatricesWindow(_BaseMatrixWindow):
         logs = []
         scalars = []
         for idx, mat in enumerate(matrices):
-            apply_scalar = idx < len(self.scalar_controls) and self.scalar_controls[idx][0].isChecked()
-            scalar_value = Fraction(1)
-            if apply_scalar:
-                try:
-                    scalar_value = _parse_fraction(self.scalar_controls[idx][1].text())
-                except Exception as exc:
-                    raise ValueError(f"Escalar inválido en Matriz {idx+1}: {exc}") from exc
-            scalars.append(scalar_value if apply_scalar else Fraction(1))
+            try:
+                scalar_value = _parse_fraction(self.scalar_controls[idx].text()) if idx < len(self.scalar_controls) else Fraction(1)
+            except Exception as exc:
+                raise ValueError(f"Escalar inválido en Matriz {idx+1}: {exc}") from exc
+            scalars.append(scalar_value)
             new_matrix = []
             for row in mat:
-                if apply_scalar:
-                    new_matrix.append([scalar_value * val for val in row])
-                else:
-                    new_matrix.append([val for val in row])
+                new_matrix.append([scalar_value * val for val in row])
             scaled.append(new_matrix)
-            if apply_scalar and scalar_value != 1:
+            if scalar_value != 1:
                 logs.append(f"Matriz {idx+1}: se multiplicó por k{idx+1} = {scalar_value}")
         return scaled, logs, scalars
 
@@ -433,14 +425,10 @@ class SumaMatricesWindow(_BaseMatrixWindow):
                 expr_parts = []
                 scaled_parts = []
                 for idx, mat in enumerate(mats):
-                    applied = idx < len(self.scalar_controls) and self.scalar_controls[idx][0].isChecked()
                     scalar_val = scalars[idx] if idx < len(scalars) else Fraction(1)
                     original_val = mat[i][j]
-                    if applied:
-                        if scalar_val != 1:
-                            expr_parts.append(f"({scalar_val}*{original_val})")
-                        else:
-                            expr_parts.append(f"(1*{original_val})")
+                    if scalar_val != 1:
+                        expr_parts.append(f"({scalar_val}*{original_val})")
                     else:
                         expr_parts.append(str(original_val))
                     scaled_parts.append(str(scaled_mats[idx][i][j]))
@@ -519,24 +507,16 @@ class RestaMatricesWindow(SumaMatricesWindow):
                 expr_text = ""
                 scaled_text = ""
                 if mats:
-                    applied0 = len(self.scalar_controls) > 0 and self.scalar_controls[0][0].isChecked()
                     scalar0 = scalars[0] if scalars else Fraction(1)
                     base_val = mats[0][i][j]
-                    if applied0:
-                        base_expr = f"({scalar0}*{base_val})" if scalar0 != 1 else f"(1*{base_val})"
-                    else:
-                        base_expr = str(base_val)
+                    base_expr = f"({scalar0}*{base_val})" if scalar0 != 1 else str(base_val)
                     base_scaled = str(scaled_mats[0][i][j])
                     rest_expr = []
                     rest_scaled = []
                     for idx in range(1, len(mats)):
-                        applied = idx < len(self.scalar_controls) and self.scalar_controls[idx][0].isChecked()
                         scalar_val = scalars[idx] if idx < len(scalars) else Fraction(1)
                         orig_val = mats[idx][i][j]
-                        if applied:
-                            rest_expr.append(f"({scalar_val}*{orig_val})" if scalar_val != 1 else f"(1*{orig_val})")
-                        else:
-                            rest_expr.append(str(orig_val))
+                        rest_expr.append(f"({scalar_val}*{orig_val})" if scalar_val != 1 else str(orig_val))
                         rest_scaled.append(str(scaled_mats[idx][i][j]))
                     if rest_expr:
                         expr_text = base_expr + " - " + " - ".join(rest_expr)
@@ -572,13 +552,11 @@ class MultiplicacionMatricesWindow(_BaseMatrixWindow):
         row.addSpacing(18)
         self.op_label = QLabel("Operacion: Multiplicacion (A x B)")
         self.lay.addWidget(self.op_label)
-        self.scalarA_chk = QCheckBox("kA");
         self.scalarA_edit = QLineEdit("1"); self.scalarA_edit.setFixedWidth(70); self.scalarA_edit.setAlignment(Qt.AlignCenter)
-        row.addWidget(QLabel("Escalar A:")); row.addWidget(self.scalarA_chk); row.addWidget(self.scalarA_edit)
+        row.addWidget(QLabel("Escalar A:")); row.addWidget(self.scalarA_edit)
         row.addSpacing(8)
-        self.scalarB_chk = QCheckBox("kB");
         self.scalarB_edit = QLineEdit("1"); self.scalarB_edit.setFixedWidth(70); self.scalarB_edit.setAlignment(Qt.AlignCenter)
-        row.addWidget(QLabel("Escalar B:")); row.addWidget(self.scalarB_chk); row.addWidget(self.scalarB_edit)
+        row.addWidget(QLabel("Escalar B:")); row.addWidget(self.scalarB_edit)
         # Encadenar: botón para usar el último resultado como A
         self._last_result = None
         self._chain_btn = QPushButton("Usar resultado como A")
@@ -635,27 +613,25 @@ class MultiplicacionMatricesWindow(_BaseMatrixWindow):
             Bs = [row[:] for row in B]
             pasos_pre = []
             try:
-                if self.scalarA_chk.isChecked():
-                    kA = _parse_fraction(self.scalarA_edit.text())
-                    if kA != 1:
-                        pasos_pre.append(f"Aplicando escalar kA = {kA} a Matriz A:")
-                        for i in range(fa):
-                            for j in range(ca):
-                                pasos_pre.append(f"a{i+1}{j+1} := {kA}*{As[i][j]} = {kA*As[i][j]}")
-                                As[i][j] = kA * As[i][j]
+                kA = _parse_fraction(self.scalarA_edit.text() or "1")
+                if kA != 1:
+                    pasos_pre.append(f"Aplicando escalar kA = {kA} a Matriz A:")
+                    for i in range(fa):
+                        for j in range(ca):
+                            pasos_pre.append(f"a{i+1}{j+1} := {kA}*{As[i][j]} = {kA*As[i][j]}")
+                            As[i][j] = kA * As[i][j]
             except Exception:
                 pass
             try:
-                if self.scalarB_chk.isChecked():
-                    kB = _parse_fraction(self.scalarB_edit.text())
-                    if kB != 1:
-                        if pasos_pre:
-                            pasos_pre.append("")
-                        pasos_pre.append(f"Aplicando escalar kB = {kB} a Matriz B:")
-                        for i in range(fb):
-                            for j in range(cb):
-                                pasos_pre.append(f"b{i+1}{j+1} := {kB}*{Bs[i][j]} = {kB*Bs[i][j]}")
-                                Bs[i][j] = kB * Bs[i][j]
+                kB = _parse_fraction(self.scalarB_edit.text() or "1")
+                if kB != 1:
+                    if pasos_pre:
+                        pasos_pre.append("")
+                    pasos_pre.append(f"Aplicando escalar kB = {kB} a Matriz B:")
+                    for i in range(fb):
+                        for j in range(cb):
+                            pasos_pre.append(f"b{i+1}{j+1} := {kB}*{Bs[i][j]} = {kB*Bs[i][j]}")
+                            Bs[i][j] = kB * Bs[i][j]
             except Exception:
                 pass
             R = [[Fraction(0) for _ in range(ca)] for _ in range(fa)]
@@ -715,26 +691,24 @@ class MultiplicacionMatricesWindow(_BaseMatrixWindow):
         pasos_pre = []
         As = [row[:] for row in A]; Bs = [row[:] for row in B]
         try:
-            if self.scalarA_chk.isChecked():
-                kA = _parse_fraction(self.scalarA_edit.text())
-                if kA != 1:
-                    pasos_pre.append(f"Aplicando escalar kA = {kA} a Matriz A:")
-                    for i in range(fa):
-                        for j in range(ca):
-                            pasos_pre.append(f"a{i+1}{j+1} := {kA}*{As[i][j]} = {kA*As[i][j]}")
-                            As[i][j] = kA * As[i][j]
+            kA = _parse_fraction(self.scalarA_edit.text() or "1")
+            if kA != 1:
+                pasos_pre.append(f"Aplicando escalar kA = {kA} a Matriz A:")
+                for i in range(fa):
+                    for j in range(ca):
+                        pasos_pre.append(f"a{i+1}{j+1} := {kA}*{As[i][j]} = {kA*As[i][j]}")
+                        As[i][j] = kA * As[i][j]
         except Exception:
             pass
         try:
-            if self.scalarB_chk.isChecked():
-                kB = _parse_fraction(self.scalarB_edit.text())
-                if kB != 1:
-                    pasos_pre.append("")
-                    pasos_pre.append(f"Aplicando escalar kB = {kB} a Matriz B:")
-                    for i in range(fb):
-                        for j in range(cb):
-                            pasos_pre.append(f"b{i+1}{j+1} := {kB}*{Bs[i][j]} = {kB*Bs[i][j]}")
-                            Bs[i][j] = kB * Bs[i][j]
+            kB = _parse_fraction(self.scalarB_edit.text() or "1")
+            if kB != 1:
+                pasos_pre.append("")
+                pasos_pre.append(f"Aplicando escalar kB = {kB} a Matriz B:")
+                for i in range(fb):
+                    for j in range(cb):
+                        pasos_pre.append(f"b{i+1}{j+1} := {kB}*{Bs[i][j]} = {kB*Bs[i][j]}")
+                        Bs[i][j] = kB * Bs[i][j]
         except Exception:
             pass
 
