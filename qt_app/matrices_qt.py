@@ -121,13 +121,46 @@ class _BaseMatrixWindow(QMainWindow):
             body=12,
         )
         self.result_box.setMinimumHeight(120)
-        self.lay.addWidget(self.result_box, 1)
+        # Contenedor con botón de expansión y caja de resultados
+        self.result_expand_btn = QToolButton()
+        self.result_expand_btn.setText("⤢")
+        self.result_expand_btn.setToolTip("Abrir resultados en ventana")
+        self.result_expand_btn.setAutoRaise(True)
+        self.result_expand_btn.clicked.connect(self._open_result_expanded)
+
+        self.result_container = QWidget()
+        result_layout = QVBoxLayout(self.result_container)
+        result_layout.setContentsMargins(0, 0, 0, 0)
+        result_layout.setSpacing(4)
+        header_row = QHBoxLayout()
+        header_row.setContentsMargins(0, 0, 0, 0)
+        header_row.addStretch(1)
+        header_row.addWidget(self.result_expand_btn, 0, Qt.AlignRight)
+        result_layout.addLayout(header_row)
+        result_layout.addWidget(self.result_box, 1)
+
+        self.lay.addWidget(self.result_container, 1)
 
         # Ajustar proporciones para dar más espacio a la grilla de ingreso sin dejar vacíos enormes
         try:
             self.lay.setStretch(self.lay.indexOf(self.actions_layout), 2)
             self.lay.setStretch(self.lay.indexOf(self.result_matrix_area), 1)
-            self.lay.setStretch(self.lay.indexOf(self.result_box), 1)
+            self.lay.setStretch(self.lay.indexOf(self.result_container), 1)
+        except Exception:
+            pass
+
+    def _open_result_expanded(self):
+        """Abre los resultados en una ventana separada."""
+        try:
+            dlg = QDialog(self)
+            dlg.setWindowTitle("Resultados")
+            lay = QVBoxLayout(dlg)
+            viewer = QTextEdit()
+            viewer.setReadOnly(True)
+            viewer.setPlainText(self.result_box.toPlainText())
+            lay.addWidget(viewer)
+            dlg.resize(720, 540)
+            dlg.exec()
         except Exception:
             pass
 
@@ -947,10 +980,10 @@ class DeterminanteMatrizWindow(_BaseMatrixWindow):
             self.lay.removeWidget(self.result_matrix_area)
             self.result_matrix_area.setParent(None)
             # Mover el cuadro de resultados debajo del botón Calcular
-            self.lay.removeWidget(self.result_box)
+            self.lay.removeWidget(self.result_container)
             self.result_box.setMinimumHeight(200)
             self.actions_layout.setSpacing(6)
-            self.actions_layout.addWidget(self.result_box)
+            self.actions_layout.addWidget(self.result_container)
             self.actions_layout.addStretch(1)
         except Exception:
             pass
