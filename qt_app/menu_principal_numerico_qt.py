@@ -74,7 +74,8 @@ class MenuNumericoPrincipalWindow(QMainWindow):
         # Navegacion lateral
         nav = QFrame()
         nav.setObjectName("NavPanel")
-        nav.setFixedWidth(260)
+        # Ancho mayor para evitar recortes en textos largos de los botones
+        nav.setFixedWidth(300)
         nav_lay = QVBoxLayout(nav)
         nav_lay.setContentsMargins(24, 24, 24, 24)
         nav_lay.setSpacing(18)

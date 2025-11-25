@@ -79,7 +79,8 @@ class MenuPrincipalWindow(QMainWindow):
         # Navegación lateral
         nav = QFrame()
         nav.setObjectName("NavPanel")
-        nav.setFixedWidth(260)
+        # Ancho alineado con el panel de métodos numéricos para mantener uniformidad
+        nav.setFixedWidth(300)
         nav_lay = QVBoxLayout(nav)
         nav_lay.setContentsMargins(24, 24, 24, 24)
         nav_lay.setSpacing(18)
