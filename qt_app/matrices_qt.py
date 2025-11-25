@@ -1,7 +1,7 @@
 ﻿from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QScrollArea, QGridLayout, QLineEdit, QTextEdit, QMessageBox, QFrame,
-    QRadioButton, QCheckBox, QToolButton, QMenu
+    QRadioButton, QCheckBox, QToolButton, QMenu, QSizePolicy
 )
 from PySide6.QtCore import Qt, QSize
 from fractions import Fraction
@@ -85,19 +85,28 @@ class _BaseMatrixWindow(QMainWindow):
         top.addStretch(1)
 
         self.scroll = QScrollArea(); self.scroll.setWidgetResizable(True)
+        self.scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.scroll.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.scrollw = QWidget(); self.scroll.setWidget(self.scrollw)
+        self.scrollw.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.grid = QGridLayout(self.scrollw)
         self.grid.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
-        self.lay.addWidget(self.scroll, 1)
 
         self.btn_run = QPushButton("Calcular")
         self.btn_run.setEnabled(False)
         self.btn_run.clicked.connect(self._run)
-        self.lay.addWidget(self.btn_run)
+
+        # Agrupar grilla de entrada y botón para que el botón quede debajo con espacio
+        self.actions_layout = QVBoxLayout()
+        self.actions_layout.setContentsMargins(0, 0, 0, 0)
+        self.actions_layout.setSpacing(16)
+        self.actions_layout.addWidget(self.scroll, 1)
+        self.actions_layout.addWidget(self.btn_run)
+        self.lay.addLayout(self.actions_layout)
 
         # Área visual para mostrar la matriz resultante en cuadritos
         self.result_matrix_area = QScrollArea(); self.result_matrix_area.setWidgetResizable(True)
-        self.result_matrix_area.setMinimumHeight(200)
+        self.result_matrix_area.setMinimumHeight(120)
         self.result_matrix_container = QWidget()
         self.result_matrix_layout = QVBoxLayout(self.result_matrix_container)
         self.result_matrix_layout.setContentsMargins(6, 6, 6, 6)
@@ -111,7 +120,16 @@ class _BaseMatrixWindow(QMainWindow):
             "font-family:Consolas,monospace;font-size:{body}px;",
             body=12,
         )
+        self.result_box.setMinimumHeight(120)
         self.lay.addWidget(self.result_box, 1)
+
+        # Ajustar proporciones para dar más espacio a la grilla de ingreso
+        try:
+            self.lay.setStretch(self.lay.indexOf(self.actions_layout), 10)
+            self.lay.setStretch(self.lay.indexOf(self.result_matrix_area), 1)
+            self.lay.setStretch(self.lay.indexOf(self.result_box), 1)
+        except Exception:
+            pass
 
         self.entries = []
         try:
@@ -146,6 +164,17 @@ class _BaseMatrixWindow(QMainWindow):
         else:
             self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
+    def _update_input_min_height(self, rows: int):
+        """Ajusta la altura mínima del área de entrada según la cantidad de filas."""
+        approx = rows * 70 + 320  # celdas más altas + padding generoso
+        # Garantizar espacio suficiente para ver al menos 5 filas sin scroll
+        target = max(1000, min(1600, approx))
+        self.scroll.setMinimumHeight(target)
+        try:
+            self.scrollw.setMinimumHeight(max(0, target - 40))
+        except Exception:
+            pass
+
     def _crear(self):
         try:
             self._setup_entries()
@@ -159,6 +188,7 @@ class _BaseMatrixWindow(QMainWindow):
             if w: w.setParent(None)
         filas = int(self.f_edit.text()); cols = int(self.c_edit.text())
         self._update_input_scroll_from_cols(cols)
+        self._update_input_min_height(filas)
         self.entries = []
         g = QGridLayout(); g.setHorizontalSpacing(6); g.setVerticalSpacing(6)
         box = QFrame(); box.setLayout(g)
@@ -180,6 +210,7 @@ class _BaseMatrixWindow(QMainWindow):
             if w:
                 w.setParent(None)
         self._update_input_scroll_from_cols(c)
+        self._update_input_min_height(f)
         self.entries = []
         for m in range(2):
             g = QGridLayout(); g.setHorizontalSpacing(6); g.setVerticalSpacing(6)
@@ -581,6 +612,7 @@ class MultiplicacionMatricesWindow(_BaseMatrixWindow):
             if w: w.setParent(None)
         f = int(self.f_edit.text()); c = int(self.c_edit.text()); p = int(self.p_edit.text())
         self._update_input_scroll_from_cols(max(c, p))
+        self._update_input_min_height(max(f, c))
         self.entries = []
         for m, (rows, cols) in enumerate(((f, c), (c, p))):
             g = QGridLayout(); g.setHorizontalSpacing(6); g.setVerticalSpacing(6)
