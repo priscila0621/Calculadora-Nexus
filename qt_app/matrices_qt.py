@@ -60,6 +60,8 @@ class _BaseMatrixWindow(QMainWindow):
         menu = QMenu(more_btn)
         act_settings = menu.addAction(gear_icon_preferred(22), "Configuración")
         act_settings.triggered.connect(self._open_settings)
+        act_help = menu.addAction("Ayuda")
+        act_help.triggered.connect(self._open_help)
         more_btn.setMenu(menu)
         topbar.addWidget(more_btn, 0, Qt.AlignRight)
         self.lay.addLayout(topbar)
@@ -123,6 +125,27 @@ class _BaseMatrixWindow(QMainWindow):
         except Exception:
             pass
 
+    def _open_help(self):
+        try:
+            text = self._get_help_text()
+        except Exception:
+            text = None
+        if not text:
+            text = (
+                "Ingresa las dimensiones y los valores de las matrices. "
+                "Usa Calcular para obtener el resultado y revisa el detalle generado."
+            )
+        QMessageBox.information(self, "Ayuda", text)
+
+    def _get_help_text(self) -> str:
+        return ""
+
+    def _update_input_scroll_from_cols(self, cols: int):
+        if cols <= 5:
+            self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        else:
+            self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+
     def _crear(self):
         try:
             self._setup_entries()
@@ -135,6 +158,7 @@ class _BaseMatrixWindow(QMainWindow):
             w = self.grid.itemAt(i).widget()
             if w: w.setParent(None)
         filas = int(self.f_edit.text()); cols = int(self.c_edit.text())
+        self._update_input_scroll_from_cols(cols)
         self.entries = []
         g = QGridLayout(); g.setHorizontalSpacing(6); g.setVerticalSpacing(6)
         box = QFrame(); box.setLayout(g)
@@ -155,6 +179,7 @@ class _BaseMatrixWindow(QMainWindow):
             w = self.grid.itemAt(i).widget()
             if w:
                 w.setParent(None)
+        self._update_input_scroll_from_cols(c)
         self.entries = []
         for m in range(2):
             g = QGridLayout(); g.setHorizontalSpacing(6); g.setVerticalSpacing(6)
@@ -208,6 +233,19 @@ class _BaseMatrixWindow(QMainWindow):
         self.result_matrix_layout.addWidget(lbl, 0)
         matw = _matrix_widget(self, M)
         self.result_matrix_layout.addWidget(matw, 1)
+        # Desactivar scroll si la matriz es compacta; activar solo para anchos grandes
+        rows = len(M)
+        cols = len(M[0]) if rows else 0
+        if cols <= 5:
+            self.result_matrix_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            self.result_matrix_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+            # Ajustar altura para evitar barras innecesarias
+            approx_row_height = 36
+            target_h = max(120, min(360, rows * approx_row_height + 40))
+            self.result_matrix_area.setMinimumHeight(target_h)
+        else:
+            self.result_matrix_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+            self.result_matrix_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         # for accessibility, also set textual representation in result_box if empty
         try:
             if not self.result_box.toPlainText().strip():
@@ -317,6 +355,7 @@ class SumaMatricesWindow(_BaseMatrixWindow):
             w = self.grid.itemAt(i).widget()
             if w: w.setParent(None)
         filas = int(self.f_edit.text()); cols = int(self.c_edit.text()); n = int(self.num_edit.text())
+        self._update_input_scroll_from_cols(cols)
         self._ensure_scalar_controls(n)
         self.entries = []
         for m in range(n):
@@ -413,6 +452,14 @@ class SumaMatricesWindow(_BaseMatrixWindow):
                     line = f"[{i+1},{j+1}]: {expr_text} = {scaled_text} = {result[i][j]}"
                 self.result_box.insertPlainText(line + "\n")
 
+    def _get_help_text(self) -> str:
+        return (
+            "Suma de matrices:\n"
+            "1) Ingresa filas y columnas (todas las matrices deben tener el mismo tamaño).\n"
+            "2) Define cuántas matrices sumar y, si quieres, aplica escalares k1, k2...\n"
+            "3) Pulsa \"Crear matrices\" para generar los tableros y luego \"Calcular\" para ver la suma y el detalle."
+        )
+
 
 class RestaMatricesWindow(SumaMatricesWindow):
     def __init__(self, parent=None):
@@ -505,6 +552,14 @@ class RestaMatricesWindow(SumaMatricesWindow):
                     line = f"[{i+1},{j+1}]: {expr_text} = {scaled_text} = {result[i][j]}"
                 self.result_box.insertPlainText(line + "\n")
 
+    def _get_help_text(self) -> str:
+        return (
+            "Resta de matrices:\n"
+            "1) Filas y columnas deben coincidir entre A y B.\n"
+            "2) Completa los valores (puedes reutilizar un resultado previo como A si lo tienes).\n"
+            "3) Opcional: aplica escalares kA y kB antes de restar. Luego presiona \"Calcular\"."
+        )
+
 
 class MultiplicacionMatricesWindow(_BaseMatrixWindow):
     def __init__(self, parent=None):
@@ -547,6 +602,7 @@ class MultiplicacionMatricesWindow(_BaseMatrixWindow):
             w = self.grid.itemAt(i).widget()
             if w: w.setParent(None)
         f = int(self.f_edit.text()); c = int(self.c_edit.text()); p = int(self.p_edit.text())
+        self._update_input_scroll_from_cols(max(c, p))
         self.entries = []
         for m, (rows, cols) in enumerate(((f, c), (c, p))):
             g = QGridLayout(); g.setHorizontalSpacing(6); g.setVerticalSpacing(6)
@@ -767,6 +823,14 @@ class MultiplicacionMatricesWindow(_BaseMatrixWindow):
         fa = len(self._last_result)
         cb = len(self._last_result[0]) if fa else 0
         self._setup_entries_addsub(fa, cb)
+
+    def _get_help_text(self) -> str:
+        return (
+            "Multiplicación A x B:\n"
+            "1) Filas/columnas de A y columnas de B (filas de B = columnas de A).\n"
+            "2) Llena A y B; opcionalmente aplica kA o kB antes de multiplicar.\n"
+            "3) Presiona \"Calcular\". Si quieres sumar/restar el resultado con otra matriz, usa los botones debajo."
+        )
 
 
 class TranspuestaMatrizWindow(_BaseMatrixWindow):
