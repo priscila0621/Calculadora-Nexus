@@ -7,13 +7,15 @@ from multiplicacion_matrices_app import MultiplicacionMatricesApp
 from transpuesta_matriz_app import TranspuestaMatrizApp
 from inversa_matriz_app import InversaMatrizApp
 from determinante_matriz_app import DeterminanteMatrizApp
+from operaciones_matrices_app import OperacionesMatricesApp
 
 
 class MenuMatrices:
     def __init__(self, root, volver_callback):
         self.root = root
         self.root.title("Operaciones con Matrices")
-        self.root.geometry("620x460")
+        # Altura mayor para acomodar el nuevo botón de operaciones.
+        self.root.geometry("620x520")
         self.root.configure(bg="#ffe4e6")
         self.volver_callback = volver_callback
 
@@ -32,6 +34,7 @@ class MenuMatrices:
             ("Determinantes", self.determinante_matriz),
             ("Inversa de matriz", self.inversa_matriz),
             ("Transpuesta de matriz", self.transpuesta_matriz),
+            ("Operaciones (A, u, v)", self.operaciones_matrices),
         )
 
         for texto, comando in botones:
@@ -94,4 +97,7 @@ class MenuMatrices:
 
     def transpuesta_matriz(self):
         self._abrir_operacion(TranspuestaMatrizApp, "Transpuesta de matriz")
+
+    def operaciones_matrices(self):
+        self._abrir_operacion(OperacionesMatricesApp, "Operaciones con matrices y vectores")
 

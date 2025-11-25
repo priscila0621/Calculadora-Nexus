@@ -73,6 +73,11 @@ class MenuMatricesWindow(QMainWindow):
         btn_inv.clicked.connect(self._open_inv)
         nav_lay.addWidget(btn_inv)
 
+        btn_ops = QPushButton("Operaciones A(u,v)")
+        btn_ops.setMinimumHeight(36)
+        btn_ops.clicked.connect(self._open_ops)
+        nav_lay.addWidget(btn_ops)
+
         nav_lay.addStretch(1)
         more_btn = QToolButton()
         more_btn.setAutoRaise(True)
@@ -170,6 +175,12 @@ class MenuMatricesWindow(QMainWindow):
     def _open_inv(self):
         from .matrices_qt import InversaMatrizWindow
         w = InversaMatrizWindow(parent=self)
+        w.showMaximized()
+        self._child = w
+
+    def _open_ops(self):
+        from .operaciones_qt import OperacionesMatricesWindow
+        w = OperacionesMatricesWindow(parent=self)
         w.showMaximized()
         self._child = w
 
