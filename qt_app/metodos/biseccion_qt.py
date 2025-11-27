@@ -430,6 +430,8 @@ def _needs_implicit_mul(expr: str, prev_idx: int, curr_idx: int) -> bool:
         return prev_lower == "x" or prev_char == ")"
 
     if curr_char.isalpha():
+        if prev_lower == "x":
+            return True
         if prev_char.isdigit() or prev_char == "." or prev_char == ")":
             if curr_lower in ("e",):
                 return not _looks_like_scientific(expr, curr_idx)
