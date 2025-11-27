@@ -791,17 +791,80 @@ class OperacionesMatricesWindow(QMainWindow):
             op, left, right = node[1], node[2], node[3]
             a, a_label = self._eval_with_log(left, log)
             b, b_label = self._eval_with_log(right, log)
+            # compute result
             if op == "+":
                 res = self._add(a, b)
                 log.append(f"{a_label} + {b_label} -> {self._describe_obj(res)}")
+                # Detallar elemento a elemento
+                if res["type"] == "scalar":
+                    log.append(f"  {_fmt(a['value'])} + {_fmt(b['value'])} = {_fmt(res['value'])}")
+                elif res["type"] == "vector":
+                    for i in range(len(res['value'])):
+                        log.append(f"  v[{i+1}]: {_fmt(a['value'][i])} + {_fmt(b['value'][i])} = {_fmt(res['value'][i])}")
+                elif res["type"] == "matrix":
+                    m = len(res['value']); n = len(res['value'][0]) if m else 0
+                    for i in range(m):
+                        parts = []
+                        for j in range(n):
+                            parts.append(f"({_fmt(a['value'][i][j])} + {_fmt(b['value'][i][j])})={_fmt(res['value'][i][j])}")
+                        log.append(f"  fila {i+1}: " + ", ".join(parts))
                 return res, f"({a_label}+{b_label})"
             if op == "-":
                 res = self._sub(a, b)
                 log.append(f"{a_label} - {b_label} -> {self._describe_obj(res)}")
+                if res["type"] == "scalar":
+                    log.append(f"  {_fmt(a['value'])} - {_fmt(b['value'])} = {_fmt(res['value'])}")
+                elif res["type"] == "vector":
+                    for i in range(len(res['value'])):
+                        log.append(f"  v[{i+1}]: {_fmt(a['value'][i])} - {_fmt(b['value'][i])} = {_fmt(res['value'][i])}")
+                elif res["type"] == "matrix":
+                    m = len(res['value']); n = len(res['value'][0]) if m else 0
+                    for i in range(m):
+                        parts = []
+                        for j in range(n):
+                            parts.append(f"({_fmt(a['value'][i][j])} - {_fmt(b['value'][i][j])})={_fmt(res['value'][i][j])}")
+                        log.append(f"  fila {i+1}: " + ", ".join(parts))
                 return res, f"({a_label}-{b_label})"
             if op == "*":
                 res = self._mul(a, b)
                 log.append(f"{a_label} * {b_label} -> {self._describe_obj(res)}")
+                # Detallar segun tipos
+                if a['type'] == 'scalar' and b['type'] == 'scalar':
+                    log.append(f"  {_fmt(a['value'])} * {_fmt(b['value'])} = {_fmt(res['value'])}")
+                elif a['type'] == 'scalar' and b['type'] == 'vector':
+                    for i, val in enumerate(res['value']):
+                        log.append(f"  v[{i+1}]: {_fmt(a['value'])} * {_fmt(b['value'][i])} = {_fmt(val)}")
+                elif a['type'] == 'scalar' and b['type'] == 'matrix':
+                    m = len(res['value']); n = len(res['value'][0]) if m else 0
+                    for i in range(m):
+                        parts = []
+                        for j in range(n):
+                            parts.append(f"{_fmt(a['value'])}*{_fmt(b['value'][i][j])}={_fmt(res['value'][i][j])}")
+                        log.append(f"  fila {i+1}: " + ", ".join(parts))
+                elif a['type'] == 'matrix' and b['type'] == 'vector':
+                    A = a['value']; v = b['value']
+                    for i in range(len(res['value'])):
+                        parts = [f"{_fmt(A[i][j])}*{_fmt(v[j])}" for j in range(len(v))]
+                        summ = " + ".join(parts)
+                        log.append(f"  fila {i+1}: {summ} = {_fmt(res['value'][i])}")
+                elif a['type'] == 'matrix' and b['type'] == 'matrix':
+                    A = a['value']; B = b['value']
+                    m = len(res['value']); p = len(res['value'][0]) if m else 0
+                    for i in range(m):
+                        for j in range(p):
+                            parts = [f"{_fmt(A[i][k])}*{_fmt(B[k][j])}" for k in range(len(B))]
+                            summ = " + ".join(parts)
+                            log.append(f"  fila {i+1},col {j+1}: {summ} = {_fmt(res['value'][i][j])}")
+                elif a['type'] == 'matrix' and b['type'] == 'scalar':
+                    m = len(res['value']); n = len(res['value'][0]) if m else 0
+                    for i in range(m):
+                        parts = []
+                        for j in range(n):
+                            parts.append(f"{_fmt(a['value'][i][j])}*{_fmt(b['value'])}={_fmt(res['value'][i][j])}")
+                        log.append(f"  fila {i+1}: " + ", ".join(parts))
+                elif a['type'] == 'vector' and b['type'] == 'scalar':
+                    for i, val in enumerate(res['value']):
+                        log.append(f"  v[{i+1}]: {_fmt(a['value'][i])} * {_fmt(b['value'])} = {_fmt(val)}")
                 return res, f"{a_label}*{b_label}"
         raise ValueError("Nodo invalido.")
 
@@ -862,22 +925,98 @@ class OperacionesMatricesWindow(QMainWindow):
             ast = self._parse(tokens)
             pasos = []
             res, _ = self._eval_with_log(ast, pasos)
+
+            # Valores guardados (lista con representacion y tamano)
+            saved_lines = []
+            for name in sorted(self.objects.keys()):
+                obj = self.objects[name]
+                if obj["type"] == "matrix":
+                    m = len(obj["value"]); n = len(obj["value"][0]) if m else 0
+                    saved_lines.append(f"{name}: matriz {m}×{n}")
+                    saved_lines.append(self._format_value(obj))
+                elif obj["type"] == "vector":
+                    n = len(obj["value"])
+                    saved_lines.append(f"{name}: vector {n}×1")
+                    saved_lines.append(self._format_value(obj))
+                else:
+                    saved_lines.append(f"{name}: escalar = {_fmt(obj['value'])}")
+
+            # Identificacion de tipos para nodos principales (si corresponde)
+            def node_ident(n):
+                if n[0] == 'id':
+                    nm = n[1]
+                    obj = self.objects.get(nm)
+                    if not obj:
+                        return f"{nm}: (no definido)"
+                    if obj['type'] == 'matrix':
+                        m = len(obj['value']); p = len(obj['value'][0]) if m else 0
+                        return f"{nm}: matriz {m}×{p}"
+                    if obj['type'] == 'vector':
+                        return f"{nm}: vector {len(obj['value'])}×1"
+                    return f"{nm}: escalar"
+                if n[0] == 'scalar':
+                    return f"constante: escalar {_fmt(n[1])}"
+                return "expresion compuesta"
+
+            types_lines = []
+            if ast[0] == 'op':
+                left = ast[2]; right = ast[3]
+                types_lines.append(node_ident(left))
+                types_lines.append(node_ident(right))
+
+            # Regla aplicada (simple heuristica sobre el nodo raiz)
+            rule = 'Regla no identificada.'
+            if ast[0] == 'op' and ast[1] == '*':
+                # obtener tipos reales evaluando nodos sin logs
+                def get_type(n):
+                    if n[0] == 'id':
+                        return self.objects[n[1]]['type']
+                    return 'scalar' if n[0] == 'scalar' else 'expr'
+                tL = get_type(ast[2]); tR = get_type(ast[3])
+                if (tL == 'matrix' and tR == 'scalar') or (tL == 'scalar' and tR == 'matrix'):
+                    rule = 'Multiplicación matriz por escalar (cada elemento multiplicado por el escalar).'
+                elif tL == 'matrix' and tR == 'vector':
+                    rule = 'Producto filas × columnas (matriz × vector).'
+                elif tL == 'matrix' and tR == 'matrix':
+                    rule = 'Producto filas × columnas (matriz × matriz).'
+
+            # Procedimiento: usar pasos generados por _eval_with_log
             proc = []
-            proc.append("Tokens: " + " ".join(tokens))
-            proc.append("")
-            proc.append("Arbol sintactico:")
+            proc.append('Arbol sintactico:')
             proc.extend(self._ast_lines(ast))
-            proc.append("")
-            proc.append("Operaciones:")
+            proc.append('')
+            proc.append('Valores guardados:')
+            proc.extend(saved_lines if saved_lines else ['(No hay objetos guardados)'])
+            proc.append('')
+            proc.append('Identificación de tipos:')
+            proc.extend(types_lines if types_lines else ['(No aplicable)'])
+            proc.append('')
+            proc.append('Regla aplicada:')
+            proc.append(rule)
+            proc.append('')
+            proc.append('Procedimiento paso a paso:')
             if pasos:
                 for idx, line in enumerate(pasos, 1):
                     proc.append(f"{idx}. {line}")
             else:
-                proc.append("Sin operaciones registradas.")
+                proc.append('Sin operaciones registradas.')
+
             html = []
-            html.append("<b>Expresion:</b> " + expr)
-            html.append(self._pre("\n".join(proc)))
-            html.append("<b>Resultado:</b>")
+            html.append('<b>Expresión y Árbol sintáctico</b>')
+            html.append(self._pre('\n'.join(proc[:len(self._ast_lines(ast))+1])))
+            # Mostrar valores guardados en bloque propio
+            html.append('<b>Valores guardados</b>')
+            if saved_lines:
+                html.append(self._pre('\n'.join(saved_lines)))
+            else:
+                html.append(self._pre('(No hay objetos guardados)'))
+            html.append('<b>Identificación de tipos</b>')
+            html.append(self._pre('\n'.join(types_lines) if types_lines else '(No aplicable)'))
+            html.append('<b>Regla aplicada</b>')
+            html.append(self._pre(rule))
+            html.append('<b>Procedimiento paso a paso</b>')
+            html.append(self._pre('\n'.join([f"{i+1}. {l}" for i,l in enumerate(pasos)]) if pasos else 'Sin operaciones registradas.'))
+            html.append('<b>Resultado final</b>')
             html.append(self._pre(self._format_value(res)))
             self.result_box.setHtml("\n".join(html))
             self.result_box.moveCursor(QTextCursor.End)
