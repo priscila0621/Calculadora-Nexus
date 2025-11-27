@@ -249,7 +249,8 @@ class OperacionesMatricesWindow(QMainWindow):
         ops_row.addWidget(QLabel("Atajos de simbolos:"))
         for sym in ["+", "-", "*", "(", ")"]:
             b = QPushButton(sym)
-            b.setFixedWidth(42)
+            b.setFixedWidth(54)
+            b.setMinimumHeight(32)
             b.setCursor(Qt.PointingHandCursor)
             b.clicked.connect(lambda _, t=sym: self._insert_text(t))
             ops_row.addWidget(b)
@@ -1019,9 +1020,6 @@ class OperacionesMatricesWindow(QMainWindow):
 
             # Procedimiento: usar pasos generados por _eval_with_log
             proc = []
-            proc.append('Arbol sintactico:')
-            proc.extend(self._ast_lines(ast))
-            proc.append('')
             proc.append('Valores guardados:')
             proc.extend(saved_lines if saved_lines else ['(No hay objetos guardados)'])
             proc.append('')
@@ -1039,9 +1037,6 @@ class OperacionesMatricesWindow(QMainWindow):
                 proc.append('Sin operaciones registradas.')
 
             html = []
-            html.append('<b>Expresión y Árbol sintáctico</b>')
-            html.append(self._pre('\n'.join(proc[:len(self._ast_lines(ast))+1])))
-            # Mostrar valores guardados en bloque propio
             html.append('<b>Valores guardados</b>')
             if saved_lines:
                 html.append(self._pre('\n'.join(saved_lines)))
