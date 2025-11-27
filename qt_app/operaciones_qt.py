@@ -331,8 +331,11 @@ class OperacionesMatricesWindow(QMainWindow):
     # ---------------- Guardar objetos ----------------
     def _guardar_matriz(self):
         nombre = (self.mat_name.text() or "").strip()
-        if not nombre.isalpha():
-            QMessageBox.warning(self, "Aviso", "Usa un nombre de matriz con letras (ej: A, B, M).")
+        if not (nombre.isalpha() and len(nombre) == 1):
+            QMessageBox.warning(self, "Aviso", "Usa un nombre de matriz de una sola letra (ej: A, B, M).")
+            return
+        if nombre in self.objects:
+            QMessageBox.warning(self, "Aviso", "Ese nombre ya existe. Usa otra letra.")
             return
         if not self.matrix_entries:
             self._crear_tablero_matriz()
@@ -351,8 +354,11 @@ class OperacionesMatricesWindow(QMainWindow):
 
     def _guardar_vector(self):
         nombre = (self.vec_name.text() or "").strip()
-        if not nombre.isalpha():
-            QMessageBox.warning(self, "Aviso", "Usa un nombre de vector con letras (ej: u, v, w).")
+        if not (nombre.isalpha() and len(nombre) == 1):
+            QMessageBox.warning(self, "Aviso", "Usa un nombre de vector de una sola letra (ej: u, v, w).")
+            return
+        if nombre in self.objects:
+            QMessageBox.warning(self, "Aviso", "Ese nombre ya existe. Usa otra letra.")
             return
         if not self.vector_entries:
             self._crear_tablero_vector()
@@ -367,8 +373,11 @@ class OperacionesMatricesWindow(QMainWindow):
 
     def _guardar_escalar(self):
         nombre = (self.sca_name.text() or "").strip()
-        if not nombre.isalpha():
-            QMessageBox.warning(self, "Aviso", "Usa un nombre de escalar con letras (ej: a, b, c).")
+        if not (nombre.isalpha() and len(nombre) == 1):
+            QMessageBox.warning(self, "Aviso", "Usa un nombre de escalar de una sola letra (ej: a, b, c).")
+            return
+        if nombre in self.objects:
+            QMessageBox.warning(self, "Aviso", "Ese nombre ya existe. Usa otra letra.")
             return
         try:
             val = _parse_fraction(self.sca_val.text())
@@ -380,12 +389,7 @@ class OperacionesMatricesWindow(QMainWindow):
         self._refresh_objects_view()
 
     def _unique_name(self, base):
-        if base not in self.objects:
-            return base
-        idx = 2
-        while f"{base}{idx}" in self.objects:
-            idx += 1
-        return f"{base}{idx}"
+        return base
 
     def _refresh_objects_view(self):
         self.objects_list.clear()
@@ -692,17 +696,18 @@ class OperacionesMatricesWindow(QMainWindow):
                     j += 1
                 tokens.append(expr[i:j]); i = j; continue
             if ch.isalpha():
-                j = i
-                while j < len(expr) and expr[j].isalpha():
-                    j += 1
-                tokens.append(expr[i:j]); i = j; continue
+                # Nombres de un caracter (A, B, u, v, c...). Evita tokens largos como "Ac".
+                tokens.append(ch); i += 1; continue
             raise ValueError(f"Caracter invalido: {ch}")
         out = []
+        def is_value(t):
+            return t not in {"+", "-", "*", "(", ")"}
         for idx, tok in enumerate(tokens):
             out.append(tok)
             if idx + 1 < len(tokens):
                 a, b = tok, tokens[idx + 1]
-                if (a not in "+-*" and a != "(") and (b not in "+-*)" and b != ")"):
+                # Insertar multiplicacion implicita en casos como "cA", "A(u+v)", ")(" o ")A"
+                if (is_value(a) or a == ")") and (is_value(b) or b == "("):
                     out.append("*")
         return out
 
