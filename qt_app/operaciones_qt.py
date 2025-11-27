@@ -573,15 +573,12 @@ class OperacionesMatricesWindow(QMainWindow):
 
     def _template_buttons(self):
         def first_of_type(t, fallback):
-            for name, obj in self.objects.items():
-                if obj.get("type") == t:
-                    return name
+            obj = self.objects.get(fallback)
+            if obj and obj.get("type") == t:
+                return fallback
             return fallback
 
         def second_matrix(primary):
-            for name, obj in self.objects.items():
-                if obj.get("type") == "matrix" and name != primary:
-                    return name
             return "B" if primary != "B" else "C"
 
         def template_av():
