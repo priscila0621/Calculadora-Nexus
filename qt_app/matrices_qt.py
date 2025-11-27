@@ -968,26 +968,179 @@ class TranspuestaMatrizWindow(_BaseMatrixWindow):
         except Exception:
             pass
 
-    def _run(self):
-        A = self._leer()
-        f = len(A); c = len(A[0]) if f else 0
-        T = [[A[i][j] for i in range(f)] for j in range(c)]
-        pasos = []
-        for i in range(f):
-            for j in range(c):
-                pasos.append(f"Paso {len(pasos)+1}: A[{i+1},{j+1}] -> T[{j+1},{i+1}] = {A[i][j]}")
-        self.result_box.clear()
+        # Controles adicionales para operaciones avanzadas (vector/matriz B y tipo de operación)
         try:
-            self._show_matrix_result(T, title="Resultado (Transpuesta)")
+            adv_row = QHBoxLayout()
+            adv_row.setContentsMargins(0, 0, 0, 0)
+            self.adv_checkbox = QCheckBox("Operaciones avanzadas")
+            self.adv_checkbox.setToolTip("Mostrar opciones para ingresar un vector/matriz B y elegir operaciones")
+            self.adv_checkbox.toggled.connect(self._toggle_adv)
+            adv_row.addWidget(self.adv_checkbox)
+            adv_row.addStretch(1)
+            self.actions_layout.addLayout(adv_row)
+
+            # Panel oculto con opciones
+            self.adv_panel = QWidget()
+            adv_layout = QVBoxLayout(self.adv_panel)
+            adv_layout.setContentsMargins(6, 6, 6, 6)
+            # Operaciones disponibles (radio)
+            ops_row = QHBoxLayout()
+            self.rb_transpose = QRadioButton("A^T (Transponer A)")
+            self.rb_atx = QRadioButton("A^T x (transpuesta por vector)")
+            self.rb_axT = QRadioButton("(Ax)^T")
+            self.rb_xTA_T = QRadioButton("x^T A^T")
+            self.rb_xxT = QRadioButton("x x^T")
+            self.rb_xTx = QRadioButton("x^T x (producto escalar)")
+            self.rb_transpose.setChecked(True)
+            for rb in (self.rb_transpose, self.rb_atx, self.rb_axT, self.rb_xTA_T, self.rb_xxT, self.rb_xTx):
+                ops_row.addWidget(rb)
+            adv_layout.addLayout(ops_row)
+
+            # Área para ingresar vector/matriz B
+            self.grid_b = QGridLayout()
+            self.grid_b.setHorizontalSpacing(6)
+            self.grid_b.setVerticalSpacing(6)
+            bframe = QFrame(); bframe.setLayout(self.grid_b)
+            adv_layout.addWidget(QLabel("Matriz/Vector B (opcional)"))
+            adv_layout.addWidget(bframe)
+            self.vector_entries = []  # lista de QLineEdit (columna o matrix)
+            # Botón para configurar tamaño de B
+            size_row = QHBoxLayout()
+            self.b_rows = QLineEdit("2"); self.b_rows.setFixedWidth(60); self.b_rows.setAlignment(Qt.AlignCenter)
+            self.b_cols = QLineEdit("1"); self.b_cols.setFixedWidth(60); self.b_cols.setAlignment(Qt.AlignCenter)
+            btn_b_create = QPushButton("Crear B")
+            btn_b_create.clicked.connect(self._crear_b)
+            size_row.addWidget(QLabel("Filas B:")); size_row.addWidget(self.b_rows)
+            size_row.addSpacing(8)
+            size_row.addWidget(QLabel("Columnas B:")); size_row.addWidget(self.b_cols)
+            size_row.addSpacing(12)
+            size_row.addWidget(btn_b_create)
+            adv_layout.addLayout(size_row)
+
+            self.adv_panel.setVisible(False)
+            self.actions_layout.addWidget(self.adv_panel)
         except Exception:
             pass
-        self.result_box.clear()
-        self.result_box.insertPlainText("Resultado (Transpuesta)\n\n")
-        self.result_box.insertPlainText("\n".join(" ".join(str(v) for v in row) for row in T) + "\n\n")
-        self.result_box.insertPlainText("Pasos detallados\n")
-        for line in pasos:
-            self.result_box.insertPlainText(line + "\n")
-        self._last_transpose = T
+
+    def _run(self):
+        # Leer matriz A
+        A = self._leer()
+        # helpers
+        def transpose(M):
+            r = len(M); c = len(M[0]) if r else 0
+            return [[M[i][j] for i in range(r)] for j in range(c)]
+
+        def mul(M, N):
+            # M: r x m, N: m x c
+            r = len(M); m = len(M[0]) if r else 0
+            nrows = len(N); nc = len(N[0]) if nrows else 0
+            if m != nrows:
+                raise ValueError("Dimensiones incompatibles para multiplicación")
+            R = [[Fraction(0) for _ in range(nc)] for __ in range(r)]
+            for i in range(r):
+                for j in range(nc):
+                    s = Fraction(0)
+                    for k in range(m):
+                        s += Fraction(M[i][k]) * Fraction(N[k][j])
+                    R[i][j] = s
+            return R
+
+        def read_B():
+            # devuelve matrix B como lista de lists (Fraction)
+            if not self.vector_entries:
+                return None
+            rows = len(self.vector_entries)
+            cols = len(self.vector_entries[0]) if rows and isinstance(self.vector_entries[0], list) else 1
+            B = []
+            for i in range(rows):
+                row = []
+                for j in range(cols):
+                    row.append(_parse_fraction(self.vector_entries[i][j].text()))
+                B.append(row)
+            return B
+
+        # Determinar operación
+        try:
+            if getattr(self, 'adv_checkbox', None) and self.adv_checkbox.isChecked():
+                B = read_B()
+                if self.rb_transpose.isChecked():
+                    T = transpose(A)
+                    title = "Resultado (A^T)"
+                    pasos = ["Se calcula A^T intercambiando índices (i,j) -> (j,i)."]
+                    self._show_matrix_result(T, title=title)
+                elif self.rb_atx.isChecked():
+                    if B is None:
+                        raise ValueError("Ingrese vector/matriz B para esta operación")
+                    T = transpose(A)
+                    # T * x
+                    R = mul(T, B)
+                    title = "Resultado (A^T x)"
+                    pasos = [f"Se calcula A^T (size {len(T)}x{len(T[0])}) y se multiplica por B"]
+                    self._show_matrix_result(R, title=title)
+                elif self.rb_axT.isChecked():
+                    if B is None:
+                        raise ValueError("Ingrese vector x para calcular (Ax)^T")
+                    R = mul(A, B)
+                    RT = transpose(R)
+                    title = "Resultado ((Ax)^T)"
+                    pasos = ["Se calcula Ax y luego se transpone el resultado."]
+                    self._show_matrix_result(RT, title=title)
+                elif self.rb_xTA_T.isChecked():
+                    if B is None:
+                        raise ValueError("Ingrese vector x para calcular x^T A^T")
+                    T = transpose(A)
+                    # x^T A^T = (A x)^T? we compute x^T * A^T
+                    R = mul(B, T)
+                    title = "Resultado (x^T A^T)"
+                    pasos = ["Se calcula x^T * A^T directamente con multiplicación de matrices"]
+                    self._show_matrix_result(R, title=title)
+                elif self.rb_xxT.isChecked():
+                    if B is None:
+                        raise ValueError("Ingrese vector x para calcular x x^T")
+                    # asumimos B es x (columna). x x^T = x * x^T -> m x m
+                    XT = transpose(B)
+                    R = mul(B, XT)
+                    title = "Resultado (x x^T)"
+                    pasos = ["Se multiplica x (columna) por x^T (fila) para obtener matriz m x m"]
+                    self._show_matrix_result(R, title=title)
+                elif self.rb_xTx.isChecked():
+                    if B is None:
+                        raise ValueError("Ingrese vector x para calcular x^T x")
+                    XT = transpose(B)
+                    R = mul(XT, B)
+                    title = "Resultado (x^T x)"
+                    pasos = ["Se calcula x^T x (producto escalar, matriz 1x1)"]
+                    self._show_matrix_result(R, title=title)
+                else:
+                    raise ValueError("Operación no soportada")
+                # escribir pasos
+                self.result_box.clear()
+                self.result_box.insertPlainText(title + "\n\n")
+                for p in pasos:
+                    self.result_box.insertPlainText(p + "\n")
+                # guardar último resultado por compatibilidad
+                self._last_transpose = getattr(self, '_last_transpose', None)
+            else:
+                # comportamiento por defecto: solo transponer A
+                T = transpose(A)
+                pasos = []
+                for i in range(len(A)):
+                    for j in range(len(A[0]) if A else 0):
+                        pasos.append(f"Paso {len(pasos)+1}: A[{i+1},{j+1}] -> T[{j+1},{i+1}] = {A[i][j]}")
+                self.result_box.clear()
+                try:
+                    self._show_matrix_result(T, title="Resultado (Transpuesta)")
+                except Exception:
+                    pass
+                self.result_box.clear()
+                self.result_box.insertPlainText("Resultado (Transpuesta)\n\n")
+                self.result_box.insertPlainText("\n".join(" ".join(str(v) for v in row) for row in T) + "\n\n")
+                self.result_box.insertPlainText("Pasos detallados\n")
+                for line in pasos:
+                    self.result_box.insertPlainText(line + "\n")
+                self._last_transpose = T
+        except Exception as exc:
+            QMessageBox.warning(self, "Error", str(exc))
 
     def _open_expanded_result(self):
         T = getattr(self, "_last_transpose", None)
@@ -1006,6 +1159,35 @@ class TranspuestaMatrizWindow(_BaseMatrixWindow):
             dlg.exec()
         except Exception:
             pass
+
+    def _toggle_adv(self, show: bool):
+        try:
+            self.adv_panel.setVisible(bool(show))
+        except Exception:
+            pass
+
+    def _crear_b(self):
+        # construir la grilla B en self.grid_b según b_rows/b_cols
+        try:
+            for i in reversed(range(self.grid_b.count())):
+                w = self.grid_b.itemAt(i).widget()
+                if w:
+                    w.setParent(None)
+        except Exception:
+            pass
+        try:
+            rows = int(self.b_rows.text()); cols = int(self.b_cols.text())
+        except Exception:
+            QMessageBox.warning(self, "Aviso", "Dimensiones B inválidas")
+            return
+        self.vector_entries = []
+        for i in range(rows):
+            row = []
+            for j in range(cols):
+                e = QLineEdit(); e.setAlignment(Qt.AlignCenter); e.setPlaceholderText("0")
+                self.grid_b.addWidget(e, i, j)
+                row.append(e)
+            self.vector_entries.append(row)
 
 
 class DeterminanteMatrizWindow(_BaseMatrixWindow):
