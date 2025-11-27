@@ -218,7 +218,7 @@ class MenuPrincipalWindow(QMainWindow):
         highlights = QLabel(
             "\u2022 Automatiza cálculos complejos con precisión fraccional.\n"
             "\u2022 Documenta cada procedimiento con trazabilidad paso a paso.\n"
-            "\u2022 Diseñada para la Universidad de Tecnología: innovación aplicada."
+            "\u2022 Diseñada para aprendizaje guiado y uso profesional."
         )
         highlights.setWordWrap(True)
         highlights.setAlignment(Qt.AlignLeft)

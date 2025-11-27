@@ -119,7 +119,7 @@ class MenuMatricesWindow(QMainWindow):
         card_lay.addSpacing(12)
 
         details = QLabel(
-            "Consejo profesional:\n"
+            "Puntos clave:\n"
             "• Suma y resta aceptan múltiples matrices con seguimiento paso a paso.\n"
             "• Multiplicación incorpora escalado y cadena de operaciones.\n"
             "• Determinante, transpuesta e inversa generan visualizaciones claras listas para compartir."
