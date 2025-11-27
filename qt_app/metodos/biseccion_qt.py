@@ -721,15 +721,38 @@ class RootInputCard(QFrame):
         ft_layout.setContentsMargins(0, 0, 0, 0)
         ft_layout.setSpacing(6)
 
-        def add_btn(text: str, insert: str, cursor_offset: int = 0, tooltip=None):
+        def add_btn(text: str, insert: str, cursor_offset: int = 0, tooltip=None, set_exp_mode: bool = False):
             btn = QToolButton()
             btn.setText(text)
             btn.setAutoRaise(True)
             if tooltip:
                 btn.setToolTip(tooltip)
 
-            def _on_click(_checked=False, _insert=insert, _offset=cursor_offset):
+            def _on_click(_checked=False, _insert=insert, _offset=cursor_offset, _set_exp_mode=set_exp_mode):
                 self._insert_into_line_edit(self.function_edit, _insert, _offset)
+                if _set_exp_mode:
+                    try:
+                        s = self.function_edit.text() or ""
+                        pos = self.function_edit.cursorPosition()
+                        caret_idx = pos - 1 if pos > 0 and s[pos - 1] == "^" else s.rfind("^", 0, pos)
+                        if caret_idx != -1:
+                            try:
+                                self._in_text_update = True
+                            except Exception:
+                                pass
+                            new_s = s[:caret_idx] + "⁽⁾" + s[caret_idx + 1:]
+                            self.function_edit.setText(new_s)
+                            # colocar cursor entre los paréntesis superíndice
+                            self.function_edit.setCursorPosition(caret_idx + 1)
+                        if hasattr(self, "_exp_filter"):
+                            self._exp_filter.in_exp_mode = True
+                    except Exception:
+                        pass
+                    finally:
+                        try:
+                            self._in_text_update = False
+                        except Exception:
+                            pass
 
             btn.clicked.connect(_on_click)
             ft_layout.addWidget(btn)
@@ -747,7 +770,7 @@ class RootInputCard(QFrame):
         add_btn("ln", "ln()", cursor_offset=-1, tooltip="Logaritmo natural")
         add_btn("log", "log()", cursor_offset=-1, tooltip="Logaritmo base e (math.log)")
         add_btn("exp", "exp()", cursor_offset=-1, tooltip="Exponencial e^x")
-        add_btn("e^x", "e**()", cursor_offset=-1, tooltip="Plantilla e^x")
+        add_btn("eˣ", "e^", cursor_offset=0, tooltip="Plantilla e^x", set_exp_mode=True)
         add_btn("abs", "abs()", cursor_offset=-1, tooltip="Valor absoluto")
         add_btn("π", "pi", tooltip="Constante pi")
         add_btn("e", "e", tooltip="Constante e")
@@ -775,7 +798,7 @@ class RootInputCard(QFrame):
             add_btn("ln", "ln()", cursor_offset=-1, tooltip="Logaritmo natural")
             add_btn("log", "log()", cursor_offset=-1, tooltip="Logaritmo base e (math.log)")
             add_btn("exp", "exp()", cursor_offset=-1, tooltip="Exponencial e^x")
-            add_btn("e^x", "e**()", cursor_offset=-1, tooltip="Plantilla e^x")
+            add_btn("eˣ", "e^", cursor_offset=0, tooltip="Plantilla e^x", set_exp_mode=True)
             add_btn("abs", "abs()", cursor_offset=-1, tooltip="Valor absoluto")
             add_btn("π", "pi", tooltip="Constante pi")
             add_btn("e", "e", tooltip="Constante e")
