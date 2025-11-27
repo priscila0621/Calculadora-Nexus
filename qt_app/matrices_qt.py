@@ -675,6 +675,8 @@ class MultiplicacionMatricesWindow(_BaseMatrixWindow):
         row.addWidget(QLabel("Escalar B:")); row.addWidget(self.scalarB_edit)
         try:
             self.actions_layout.setSpacing(8)
+            pasos_pre = [] 
+            pass
         except Exception:
             pass
         # Encadenar: botón para usar el último resultado como A
@@ -1090,179 +1092,254 @@ class TranspuestaMatrizWindow(_BaseMatrixWindow):
                 B.append(row)
             return B
 
-        # Determinar operación
+        # Determinar operación y generar procedimiento paso a paso según formato requerido
         try:
-            if getattr(self, 'adv_checkbox', None) and self.adv_checkbox.isChecked():
-                B = read_B()
-                # comprobar definibilidad antes de calcular
-                defined = True
-                def add_defined_msg(msgs, ok):
-                    msgs.append("\nDefinición: " + ("Definida" if ok else "No definida"))
-                if self.rb_transpose.isChecked():
-                    T = transpose(A)
-                    title = "Resultado (A^T)"
-                    pasos = ["Se calcula A^T intercambiando índices (i,j) -> (j,i)."]
-                    # detalle paso a paso por elemento
-                    pasos_elem = []
-                    for i in range(len(A)):
-                        for j in range(len(A[0]) if A else 0):
-                            pasos_elem.append(f"T[{j+1},{i+1}] = A[{i+1},{j+1}] = {A[i][j]}")
-                    pasos.extend(pasos_elem)
-                    self._show_matrix_result(T, title=title)
-                elif self.rb_atx.isChecked():
-                    if B is None:
-                        raise ValueError("Ingrese vector/matriz B para esta operación")
-                    T = transpose(A)
-                    # T * x
-                    # comprobar dimensiones: T (c x f), B (rB x cB) -> require c == rB
-                    rT = len(T); cT = len(T[0]) if rT else 0
-                    rB = len(B); cB = len(B[0]) if rB else 0
-                    defined = (cT == rB)
-                    title = "Resultado (A^T x)"
-                    pasos = [f"A^T size {rT} x {cT}; B size {rB} x {cB}."]
-                    add_defined_msg(pasos, defined)
-                    if defined:
-                        R = mul(T, B)
-                        # pasos por elemento del producto
-                        for i in range(len(R)):
-                            for j in range(len(R[0])):
-                                terms = []
-                                for k in range(cT):
-                                    terms.append(f"{T[i][k]}*{B[k][j]}")
-                                val = R[i][j]
-                                pasos.append(f"R[{i+1},{j+1}] = " + " + ".join(terms) + f" = {val}")
-                        self._show_matrix_result(R, title=title)
-                    else:
-                        self._show_matrix_result([["--"]], title=title)
-                elif self.rb_axT.isChecked():
-                    if B is None:
-                        raise ValueError("Ingrese vector x para calcular (Ax)^T")
-                    # comprobar dimensiones: A (f x c), B (rB x cB) => c == rB
-                    rA = len(A); cA = len(A[0]) if rA else 0
-                    rB = len(B); cB = len(B[0]) if rB else 0
-                    defined = (cA == rB)
-                    title = "Resultado ((Ax)^T)"
-                    pasos = [f"A size {rA}x{cA}; B size {rB}x{cB}."]
-                    add_defined_msg(pasos, defined)
-                    if defined:
-                        R = mul(A, B)
-                        pasos.append("Cálculo de Ax (por elementos):")
-                        for i in range(len(R)):
-                            for j in range(len(R[0])):
-                                terms = []
-                                for k in range(cA):
-                                    terms.append(f"{A[i][k]}*{B[k][j]}")
-                                pasos.append(f"(Ax)[{i+1},{j+1}] = " + " + ".join(terms) + f" = {R[i][j]}")
-                        RT = transpose(R)
-                        pasos.append("Transpose de (Ax):")
-                        for i in range(len(R)):
-                            for j in range(len(R[0])):
-                                pasos.append(f"((Ax)^T)[{j+1},{i+1}] = (Ax)[{i+1},{j+1}] = {R[i][j]}")
-                        self._show_matrix_result(RT, title=title)
-                    else:
-                        self._show_matrix_result([["--"]], title=title)
-                elif self.rb_xTA_T.isChecked():
-                    if B is None:
-                        raise ValueError("Ingrese vector x para calcular x^T A^T")
-                    T = transpose(A)
-                    # comprobar dimensiones: B (rB x cB) as x^T ? we'll treat B as column x (rB x 1) or row accordingly
-                    rT = len(T); cT = len(T[0]) if rT else 0
-                    rB = len(B); cB = len(B[0]) if rB else 0
-                    # x^T * A^T requires x^T (1 x n) and A^T (n x m) -> cB == rT
-                    defined = (cB == rT)
-                    title = "Resultado (x^T A^T)"
-                    pasos = [f"x size {rB}x{cB}; A^T size {rT}x{cT}."]
-                    add_defined_msg(pasos, defined)
-                    if defined:
-                        R = mul(B, T)
-                        for i in range(len(R)):
-                            for j in range(len(R[0])):
-                                terms = [f"{B[i][k]}*{T[k][j]}" for k in range(len(T))]
-                                pasos.append(f"R[{i+1},{j+1}] = " + " + ".join(terms) + f" = {R[i][j]}")
-                        self._show_matrix_result(R, title=title)
-                    else:
-                        self._show_matrix_result([["--"]], title=title)
-                elif self.rb_xxT.isChecked():
-                    if B is None:
-                        raise ValueError("Ingrese vector x para calcular x x^T")
-                    # asumimos B es x (columna). x x^T = x * x^T -> m x m
-                    rB = len(B); cB = len(B[0]) if rB else 0
-                    defined = (cB == 1)
-                    title = "Resultado (x x^T)"
-                    pasos = [f"x size {rB}x{cB}."]
-                    add_defined_msg(pasos, defined)
-                    if defined:
-                        XT = transpose(B)
-                        R = mul(B, XT)
-                        for i in range(len(R)):
-                            for j in range(len(R[0])):
-                                terms = [f"{B[i][k]}*{XT[k][j]}" for k in range(len(B))]
-                                pasos.append(f"R[{i+1},{j+1}] = " + " + ".join(terms) + f" = {R[i][j]}")
-                        self._show_matrix_result(R, title=title)
-                    else:
-                        self._show_matrix_result([["--"]], title=title)
-                elif self.rb_xTx.isChecked():
-                    if B is None:
-                        raise ValueError("Ingrese vector x para calcular x^T x")
-                    rB = len(B); cB = len(B[0]) if rB else 0
-                    defined = (cB == 1)
-                    title = "Resultado (x^T x)"
-                    pasos = [f"x size {rB}x{cB}."]
-                    add_defined_msg(pasos, defined)
-                    if defined:
-                        XT = transpose(B)
-                        R = mul(XT, B)
-                        # paso por paso suma de componentes
-                        s_terms = []
-                        for k in range(rB):
-                            s_terms.append(f"{XT[0][k]}*{B[k][0]} = {XT[0][k]*B[k][0]}")
-                        pasos.append("x^T x = " + " + ".join([t.split(' = ')[0] for t in s_terms]) + " = " + str(R[0][0]))
-                        pasos.extend(["  -> " + t for t in s_terms])
-                        self._show_matrix_result(R, title=title)
-                    else:
-                        self._show_matrix_result([["--"]], title=title)
-                else:
-                    raise ValueError("Operación no soportada")
-                # escribir pasos
-                # guardar último resultado por compatibilidad y para permitir guardarlo en historial
-                self._last_shown_matrix = None
-                # intentar recuperar la matriz mostrada desde _last_result_matrix
-                try:
-                    self._last_shown_matrix = self._last_result_matrix
-                except Exception:
-                    self._last_shown_matrix = None
-                self._last_shown_title = title
-                pasos_text = "\n".join(pasos)
-                self._last_shown_steps = pasos_text
-                # mostrar pasos detallados
-                self.result_box.clear()
-                self.result_box.insertPlainText(title + "\n\n")
-                for p in pasos:
-                    self.result_box.insertPlainText(p + "\n")
-                # habilitar botón guardar historial si existe
-                try:
-                    self.btn_hist_save.setEnabled(True)
-                except Exception:
-                    pass
-            else:
-                # comportamiento por defecto: solo transponer A
+            steps = []
+            title = ""
+            result_matrix = None
+
+            def mat_lines(M):
+                if M is None:
+                    return ["(vacío)"]
+                return [" ".join(str(x) for x in row) for row in M]
+
+            def dims(M):
+                if M is None: return "0x0"
+                r = len(M); c = len(M[0]) if r else 0
+                return f"{r}x{c}"
+
+            def show_inputs():
+                steps.append("1) Operación: " + title)
+                steps.append("2) Matrices/Vectores ingresados:")
+                # A
+                steps.append(f"   A (dim {dims(A)}):")
+                for ln in mat_lines(A):
+                    steps.append("     " + ln)
+                # B if present
+                if getattr(self, 'adv_checkbox', None) and self.adv_checkbox.isChecked():
+                    B_local = read_B()
+                    if B_local is not None:
+                        steps.append(f"   B (dim {dims(B_local)}):")
+                        for ln in mat_lines(B_local):
+                            steps.append("     " + ln)
+
+            # operación por defecto: solo transponer A
+            if not (getattr(self, 'adv_checkbox', None) and self.adv_checkbox.isChecked()):
+                title = "A^T"
                 T = transpose(A)
-                pasos = []
+                result_matrix = T
+                show_inputs()
+                steps.append("3) Cálculo de transpuestas (si aplica):")
+                steps.append("   Se calcula A^T:")
                 for i in range(len(A)):
                     for j in range(len(A[0]) if A else 0):
-                        pasos.append(f"Paso {len(pasos)+1}: A[{i+1},{j+1}] -> T[{j+1},{i+1}] = {A[i][j]}")
-                self.result_box.clear()
-                try:
-                    self._show_matrix_result(T, title="Resultado (Transpuesta)")
-                except Exception:
-                    pass
-                self.result_box.clear()
-                self.result_box.insertPlainText("Resultado (Transpuesta)\n\n")
-                self.result_box.insertPlainText("\n".join(" ".join(str(v) for v in row) for row in T) + "\n\n")
-                self.result_box.insertPlainText("Pasos detallados\n")
-                for line in pasos:
-                    self.result_box.insertPlainText(line + "\n")
-                self._last_transpose = T
+                        steps.append(f"     T[{j+1},{i+1}] = A[{i+1},{j+1}] = {A[i][j]}")
+                steps.append("4) Verificación de dimensiones:")
+                steps.append(f"   A^T dim {dims(T)}")
+                steps.append("   Regla: Para multiplicación no aplica (solo transpuesta).")
+                steps.append("5) Cálculo paso a paso:")
+                steps.append("   (no hay multiplicación; la transpuesta está mostrada arriba)")
+                steps.append("6) Resultado final:")
+                steps.append("   Matriz resultante:")
+                for ln in mat_lines(T):
+                    steps.append("     " + ln)
+            else:
+                # operaciones avanzadas: leer B
+                B = read_B()
+                # preparar nombres
+                if self.rb_transpose.isChecked():
+                    title = "A^T"
+                    T = transpose(A)
+                    result_matrix = T
+                    show_inputs()
+                    steps.append("3) Cálculo de transpuestas (si aplica):")
+                    steps.append("   Se calcula A^T como se muestra a continuación:")
+                    for i in range(len(A)):
+                        for j in range(len(A[0]) if A else 0):
+                            steps.append(f"     T[{j+1},{i+1}] = A[{i+1},{j+1}] = {A[i][j]}")
+                    steps.append("4) Verificación de dimensiones:")
+                    steps.append(f"   A^T dim {dims(T)}")
+                    steps.append("   Regla: ninguna multiplicación requerida.")
+                    steps.append("5) Cálculo paso a paso:")
+                    steps.append("   (ver paso 3)")
+                    steps.append("6) Resultado final:")
+                    steps.append("   Matriz resultante:")
+                    for ln in mat_lines(T): steps.append("     " + ln)
+
+                elif self.rb_atx.isChecked():
+                    title = "A^T · B"
+                    T = transpose(A)
+                    result_matrix = None
+                    show_inputs()
+                    steps.append("3) Cálculo de transpuestas (si aplica):")
+                    steps.append(f"   Se calcula A^T (dim {dims(T)}):")
+                    for ln in mat_lines(T): steps.append("     " + ln)
+                    steps.append("4) Verificación de dimensiones:")
+                    rT = len(T); cT = len(T[0]) if rT else 0
+                    rB = len(B) if B is not None else 0; cB = len(B[0]) if rB else 0
+                    steps.append(f"   A^T dim {rT}x{cT}; B dim {rB}x{cB}.")
+                    steps.append("   Regla: columnas de la primera deben coincidir con filas de la segunda.")
+                    ok = (cT == rB)
+                    if ok:
+                        steps.append("   La operación está definida porque las dimensiones son compatibles.")
+                        # multiplicar
+                        R = mul(T, B)
+                        result_matrix = R
+                        steps.append("5) Cálculo paso a paso:")
+                        for i in range(len(R)):
+                            for j in range(len(R[0])):
+                                terms = [f"{T[i][k]}·{B[k][j]}" for k in range(cT)]
+                                steps.append(f"   R[{i+1},{j+1}] = " + " + ".join(terms) + f" = {R[i][j]}")
+                        steps.append("6) Resultado final:")
+                        for ln in mat_lines(R): steps.append("     " + ln)
+                    else:
+                        steps.append("   La operación NO está definida porque columnas de A^T ≠ filas de B.")
+                        steps.append("6) Resultado final:")
+                        steps.append("   Operación indefinida.")
+
+                elif self.rb_axT.isChecked():
+                    title = "(A · B)^T"
+                    result_matrix = None
+                    show_inputs()
+                    steps.append("3) Cálculo de transpuestas (si aplica):")
+                    steps.append("   (primero calculamos A·B y luego su transpuesta)")
+                    steps.append("4) Verificación de dimensiones:")
+                    rA = len(A); cA = len(A[0]) if rA else 0
+                    rB = len(B) if B is not None else 0; cB = len(B[0]) if rB else 0
+                    steps.append(f"   A dim {rA}x{cA}; B dim {rB}x{cB}.")
+                    steps.append("   Regla: columnas de A deben coincidir con filas de B.")
+                    ok = (cA == rB)
+                    if ok:
+                        steps.append("   La operación está definida porque las dimensiones son compatibles.")
+                        R = mul(A, B)
+                        steps.append("5) Cálculo paso a paso de A·B:")
+                        for i in range(len(R)):
+                            for j in range(len(R[0])):
+                                terms = [f"{A[i][k]}·{B[k][j]}" for k in range(cA)]
+                                steps.append(f"   (A·B)[{i+1},{j+1}] = " + " + ".join(terms) + f" = {R[i][j]}")
+                        RT = transpose(R)
+                        result_matrix = RT
+                        steps.append("   Ahora transponemos el resultado:")
+                        for i in range(len(R)):
+                            for j in range(len(R[0])):
+                                steps.append(f"   ((A·B)^T)[{j+1},{i+1}] = (A·B)[{i+1},{j+1}] = {R[i][j]}")
+                        steps.append("6) Resultado final:")
+                        for ln in mat_lines(RT): steps.append("     " + ln)
+                    else:
+                        steps.append("   La operación NO está definida porque columnas de A ≠ filas de B.")
+                        steps.append("6) Resultado final:")
+                        steps.append("   Operación indefinida.")
+
+                elif self.rb_xTA_T.isChecked():
+                    title = "x^T · A^T"
+                    result_matrix = None
+                    show_inputs()
+                    steps.append("3) Cálculo de transpuestas (si aplica):")
+                    XB = transpose(B) if B is not None else None
+                    TA = transpose(A)
+                    steps.append(f"   x^T (transpuesta de B) dim {dims(XB)}")
+                    for ln in mat_lines(XB): steps.append("     " + ln)
+                    steps.append(f"   A^T dim {dims(TA)}")
+                    for ln in mat_lines(TA): steps.append("     " + ln)
+                    steps.append("4) Verificación de dimensiones:")
+                    rXB = len(XB) if XB is not None else 0; cXB = len(XB[0]) if rXB else 0
+                    rTA = len(TA); cTA = len(TA[0]) if rTA else 0
+                    steps.append(f"   x^T dim {rXB}x{cXB}; A^T dim {rTA}x{cTA}.")
+                    steps.append("   Regla: columnas de la primera deben coincidir con filas de la segunda.")
+                    ok = (cXB == rTA)
+                    if ok:
+                        steps.append("   La operación está definida porque las dimensiones son compatibles.")
+                        R = mul(XB, TA)
+                        result_matrix = R
+                        steps.append("5) Cálculo paso a paso:")
+                        for i in range(len(R)):
+                            for j in range(len(R[0])):
+                                terms = [f"{XB[i][k]}·{TA[k][j]}" for k in range(rTA)]
+                                steps.append(f"   R[{i+1},{j+1}] = " + " + ".join(terms) + f" = {R[i][j]}")
+                        steps.append("6) Resultado final:")
+                        for ln in mat_lines(R): steps.append("     " + ln)
+                    else:
+                        steps.append("   La operación NO está definida porque columnas de x^T ≠ filas de A^T.")
+                        steps.append("6) Resultado final:")
+                        steps.append("   Operación indefinida.")
+
+                elif self.rb_xxT.isChecked():
+                    title = "x · x^T"
+                    result_matrix = None
+                    show_inputs()
+                    steps.append("3) Cálculo de transpuestas (si aplica):")
+                    XT = transpose(B) if B is not None else None
+                    steps.append(f"   x dim {dims(B)}; x^T dim {dims(XT)}")
+                    steps.append("4) Verificación de dimensiones:")
+                    rB = len(B) if B is not None else 0; cB = len(B[0]) if rB else 0
+                    steps.append(f"   x dim {rB}x{cB}; x^T dim {dims(XT)}")
+                    steps.append("   Regla: columnas de la primera deben coincidir con filas de la segunda.")
+                    ok = (cB == (len(XT) if XT is not None else 0))
+                    if ok:
+                        steps.append("   La operación está definida porque las dimensiones son compatibles.")
+                        R = mul(B, XT)
+                        result_matrix = R
+                        steps.append("5) Cálculo paso a paso:")
+                        for i in range(len(R)):
+                            for j in range(len(R[0])):
+                                terms = [f"{B[i][k]}·{XT[k][j]}" for k in range(len(B))]
+                                steps.append(f"   R[{i+1},{j+1}] = " + " + ".join(terms) + f" = {R[i][j]}")
+                        steps.append("6) Resultado final:")
+                        for ln in mat_lines(R): steps.append("     " + ln)
+                    else:
+                        steps.append("   La operación NO está definida porque columnas de x ≠ filas de x^T.")
+                        steps.append("6) Resultado final:")
+                        steps.append("   Operación indefinida.")
+
+                elif self.rb_xTx.isChecked():
+                    title = "x^T · x"
+                    result_matrix = None
+                    show_inputs()
+                    steps.append("3) Cálculo de transpuestas (si aplica):")
+                    XT = transpose(B) if B is not None else None
+                    steps.append(f"   x^T dim {dims(XT)}; x dim {dims(B)}")
+                    steps.append("4) Verificación de dimensiones:")
+                    rXT = len(XT) if XT is not None else 0; cXT = len(XT[0]) if rXT else 0
+                    rB = len(B) if B is not None else 0; cB = len(B[0]) if rB else 0
+                    steps.append(f"   x^T dim {rXT}x{cXT}; x dim {rB}x{cB}.")
+                    steps.append("   Regla: columnas de la primera deben coincidir con filas de la segunda.")
+                    ok = (cXT == rB)
+                    if ok:
+                        steps.append("   La operación está definida porque las dimensiones son compatibles.")
+                        R = mul(XT, B)
+                        result_matrix = R
+                        steps.append("5) Cálculo paso a paso:")
+                        # scalar 1x1
+                        terms = [f"{XT[0][k]}·{B[k][0]}" for k in range(rB)]
+                        value = R[0][0]
+                        steps.append("   x^T x = " + " + ".join(terms) + f" = {value}")
+                        for k in range(rB):
+                            prod = XT[0][k] * B[k][0]
+                            steps.append(f"     componente {k+1}: {XT[0][k]}·{B[k][0]} = {prod}")
+                        steps.append("6) Resultado final:")
+                        steps.append(f"   Escalar resultante: {value}")
+                    else:
+                        steps.append("   La operación NO está definida porque columnas de x^T ≠ filas de x.")
+                        steps.append("6) Resultado final:")
+                        steps.append("   Operación indefinida.")
+                else:
+                    raise ValueError("Operación no soportada")
+
+            # mostrar resultado y pasos
+            self.result_box.clear()
+            for idx, s in enumerate(steps, start=1 if steps and steps[0].startswith('1)') else 1):
+                self.result_box.insertPlainText(s + "\n")
+
+            # actualizar última matriz mostrada (para historial)
+            try:
+                self._last_shown_matrix = result_matrix
+                self._last_shown_title = title
+                self._last_shown_steps = "\n".join(steps)
+                try: self.btn_hist_save.setEnabled(True)
+                except Exception: pass
+            except Exception:
+                pass
+
         except Exception as exc:
             QMessageBox.warning(self, "Error", str(exc))
 
