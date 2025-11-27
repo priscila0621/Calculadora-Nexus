@@ -6,6 +6,7 @@ _SUP_MAP = {
     "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹",
     "+": "⁺", "-": "⁻", "(": "⁽", ")": "⁾",
     "n": "ⁿ", "i": "ⁱ", "j": "ʲ", "t": "ᵗ", "T": "ᵀ",
+    "x": "ˣ", "X": "ˣ",
     # Common capitals occasionally used as superscripts in math contexts
     "N": "ᴺ", "I": "ᴵ",
 }
@@ -42,7 +43,7 @@ def superscriptify(expr: str) -> str:
     s = re.sub(r"\^([+-]?\d+)", lambda m: _to_sup(m.group(1)), s)
 
     # ^ followed by a single common letter
-    s = re.sub(r"\^([nNijItT])", lambda m: _to_sup(m.group(1)), s)
+    s = re.sub(r"\^([nNijItTxX])", lambda m: _to_sup(m.group(1)), s)
 
     return s
 

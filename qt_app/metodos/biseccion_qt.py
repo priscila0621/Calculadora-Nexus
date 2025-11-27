@@ -120,6 +120,7 @@ class ExponentInputFilter(QObject):
         "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴",
         "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹",
         "+": "⁺", "-": "⁻", "(": "⁽", ")": "⁾", "n": "ⁿ",
+        "x": "ˣ", "X": "ˣ",
     }
 
     def __init__(self, edit: QLineEdit):
@@ -278,6 +279,7 @@ def _pretty_to_ascii(expr: str) -> str:
         "⁰": "0", "¹": "1", "²": "2", "³": "3", "⁴": "4",
         "⁵": "5", "⁶": "6", "⁷": "7", "⁸": "8", "⁹": "9",
         "⁺": "+", "⁻": "-", "⁽": "(", "⁾": ")", "ⁿ": "n",
+        "ˣ": "x",
     })
 
     def _sup_repl(m: re.Match) -> str:
@@ -290,7 +292,7 @@ def _pretty_to_ascii(expr: str) -> str:
         return f"{base}^({norm})"
 
     # Aplica repetidamente por si hay múltiples ocurrencias
-    pattern = re.compile(r"([A-Za-z0-9\)]+)([⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁽⁾ⁿ]+)")
+    pattern = re.compile(r"([A-Za-z0-9\)]+)([⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁽⁾ⁿˣ]+)")
     prev = None
     while prev != s:
         prev = s
@@ -649,8 +651,9 @@ class RootInputCard(QFrame):
                     "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴",
                     "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹",
                     "+": "⁺", "-": "⁻", "(": "⁽", ")": "⁾", "n": "ⁿ",
+                    "x": "ˣ", "X": "ˣ",
                 }
-                allowed = set("0123456789+-()n")
+                allowed = set("0123456789+-()nxX")
 
                 i = 0
                 new = []
@@ -1229,7 +1232,7 @@ class MetodoBiseccionWindow(QMainWindow):
                 except Exception as exc:
                     QMessageBox.warning(self, "Aviso", f"No se pudo calcular la ra??z #{card_idx} (intervalo [{a}, {b}]): {exc}")
                     continue
-        # Quitar duplicados por valor de ra�z
+        # Quitar duplicados por valor de raíz
         _unique_res = []
         _seen_keys = set()
         for _it in resultados:
