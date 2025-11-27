@@ -113,6 +113,8 @@ class ExponentInputFilter(QObject):
     - Al teclear '^' inserta '⁽⁾' y coloca el cursor dentro; activa modo exponente.
     - Mientras esté activo el modo exponente, convierte 0-9, '+', '-', '(', ')', 'n'
       a sus equivalentes en superíndice.
+    - Permite modo subíndice para log bases: convierte 0-9, '+', '-', '(', ')', 'n', 'x'
+      a subíndice mientras está activo.
     - Cualquier otra tecla sale del modo exponente y se procesa normalmente.
     """
 
@@ -122,11 +124,17 @@ class ExponentInputFilter(QObject):
         "+": "⁺", "-": "⁻", "(": "⁽", ")": "⁾", "n": "ⁿ",
         "x": "ˣ", "X": "ˣ",
     }
+    SUBS = {
+        "0": "₀", "1": "₁", "2": "₂", "3": "₃", "4": "₄",
+        "5": "₅", "6": "₆", "7": "₇", "8": "₈", "9": "₉",
+        "+": "₊", "-": "₋", "(": "₍", ")": "₎", "n": "ₙ", "x": "ₓ", "X": "ₓ",
+    }
 
     def __init__(self, edit: QLineEdit):
         super().__init__(edit)
         self.edit = edit
         self.in_exp_mode = False
+        self.in_sub_mode = False
         self._prev_star = False
 
     def eventFilter(self, obj, event):
@@ -148,8 +156,23 @@ class ExponentInputFilter(QObject):
                         self.edit.setCursorPosition(pos + 1)
                         self.in_exp_mode = True
                         return True
+                    if pos < len(s) and s[pos:pos+2] == "₍₎":
+                        # Colocar el cursor dentro del subíndice y activar modo sub
+                        self.edit.setCursorPosition(pos + 1)
+                        self.in_sub_mode = True
+                        return True
             except Exception:
                 pass
+
+            # Si estamos en modo subíndice, convertir caracteres soportados
+            if getattr(self, "in_sub_mode", False):
+                if text in self.SUBS:
+                    self._insert(self.SUBS[text])
+                    return True
+                # Salir de modo subíndice si no es un carácter soportado
+                self.in_sub_mode = False
+                self._prev_star = (text == '*')
+                return False
 
             # Activar modo exponente con '^'
             if text == "^":
@@ -281,6 +304,11 @@ def _pretty_to_ascii(expr: str) -> str:
         "⁺": "+", "⁻": "-", "⁽": "(", "⁾": ")", "ⁿ": "n",
         "ˣ": "x",
     })
+    subs_map = str.maketrans({
+        "₀": "0", "₁": "1", "₂": "2", "₃": "3", "₄": "4",
+        "₅": "5", "₆": "6", "₇": "7", "₈": "8", "₉": "9",
+        "₊": "+", "₋": "-", "₍": "(", "₎": ")", "ₙ": "n", "ₓ": "x",
+    })
 
     def _sup_repl(m: re.Match) -> str:
         base = m.group(1)
@@ -297,6 +325,56 @@ def _pretty_to_ascii(expr: str) -> str:
     while prev != s:
         prev = s
         s = pattern.sub(_sup_repl, s)
+
+    # 3) Logs con subíndice: log₍b₎(x) -> log(x, b)
+    def _convert_log_subscripts(text: str) -> str:
+        out = []
+        i = 0
+        while True:
+            idx = text.find("log₍", i)
+            if idx == -1:
+                out.append(text[i:])
+                break
+            out.append(text[i:idx])
+            base_start = idx + len("log₍")
+            base_end = text.find("₎", base_start)
+            if base_end == -1:
+                out.append(text[idx:])
+                break
+            base_raw = text[base_start:base_end]
+            base = base_raw.translate(subs_map)
+            j = base_end + 1
+            while j < len(text) and text[j].isspace():
+                j += 1
+            if j >= len(text) or text[j] != "(":
+                out.append(text[idx:base_end + 1])
+                i = base_end + 1
+                continue
+            depth = 0
+            k = j
+            while k < len(text):
+                ch = text[k]
+                if ch == "(":
+                    depth += 1
+                elif ch == ")":
+                    depth -= 1
+                    if depth == 0:
+                        break
+                k += 1
+            if depth != 0 or k >= len(text):
+                out.append(text[idx:])
+                break
+            arg = text[j + 1:k]
+            if base.strip():
+                out.append(f"log({arg},{base})")
+            else:
+                out.append(f"log({arg})")
+            i = k + 1
+        return "".join(out)
+
+    s = _convert_log_subscripts(s)
+    # 4) Convertir cualquier subíndice suelto a ASCII
+    s = s.translate(subs_map)
 
     return s
 
@@ -721,14 +799,14 @@ class RootInputCard(QFrame):
         ft_layout.setContentsMargins(0, 0, 0, 0)
         ft_layout.setSpacing(6)
 
-        def add_btn(text: str, insert: str, cursor_offset: int = 0, tooltip=None, set_exp_mode: bool = False):
+        def add_btn(text: str, insert: str, cursor_offset: int = 0, tooltip=None, set_exp_mode: bool = False, set_sub_mode: bool = False):
             btn = QToolButton()
             btn.setText(text)
             btn.setAutoRaise(True)
             if tooltip:
                 btn.setToolTip(tooltip)
 
-            def _on_click(_checked=False, _insert=insert, _offset=cursor_offset, _set_exp_mode=set_exp_mode):
+            def _on_click(_checked=False, _insert=insert, _offset=cursor_offset, _set_exp_mode=set_exp_mode, _set_sub_mode=set_sub_mode):
                 self._insert_into_line_edit(self.function_edit, _insert, _offset)
                 if _set_exp_mode:
                     try:
@@ -753,6 +831,13 @@ class RootInputCard(QFrame):
                             self._in_text_update = False
                         except Exception:
                             pass
+                if _set_sub_mode:
+                    try:
+                        if hasattr(self, "_exp_filter"):
+                            self._exp_filter.in_sub_mode = True
+                            self._exp_filter.in_exp_mode = False
+                    except Exception:
+                        pass
 
             btn.clicked.connect(_on_click)
             ft_layout.addWidget(btn)
@@ -768,7 +853,7 @@ class RootInputCard(QFrame):
         add_btn("cos", "cos()", cursor_offset=-1, tooltip="Coseno")
         add_btn("tan", "tan()", cursor_offset=-1, tooltip="Tangente")
         add_btn("ln", "ln()", cursor_offset=-1, tooltip="Logaritmo natural")
-        add_btn("log", "log()", cursor_offset=-1, tooltip="Logaritmo base e (math.log)")
+        add_btn("log₍₎", "log₍₎()", cursor_offset=-3, tooltip="Logaritmo con base (log₍b₎(x) -> log(x,b))", set_sub_mode=True)
         add_btn("exp", "exp()", cursor_offset=-1, tooltip="Exponencial e^x")
         add_btn("eˣ", "e^", cursor_offset=0, tooltip="Plantilla e^x", set_exp_mode=True)
         add_btn("abs", "abs()", cursor_offset=-1, tooltip="Valor absoluto")
@@ -796,7 +881,7 @@ class RootInputCard(QFrame):
             add_btn("cos", "cos()", cursor_offset=-1, tooltip="Coseno")
             add_btn("tan", "tan()", cursor_offset=-1, tooltip="Tangente")
             add_btn("ln", "ln()", cursor_offset=-1, tooltip="Logaritmo natural")
-            add_btn("log", "log()", cursor_offset=-1, tooltip="Logaritmo base e (math.log)")
+            add_btn("log₍₎", "log₍₎()", cursor_offset=-3, tooltip="Logaritmo con base (log₍b₎(x) -> log(x,b))", set_sub_mode=True)
             add_btn("exp", "exp()", cursor_offset=-1, tooltip="Exponencial e^x")
             add_btn("eˣ", "e^", cursor_offset=0, tooltip="Plantilla e^x", set_exp_mode=True)
             add_btn("abs", "abs()", cursor_offset=-1, tooltip="Valor absoluto")
