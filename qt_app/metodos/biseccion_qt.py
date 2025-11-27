@@ -123,11 +123,26 @@ class ExponentInputFilter(QObject):
         "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹",
         "+": "⁺", "-": "⁻", "(": "⁽", ")": "⁾", "n": "ⁿ",
         "x": "ˣ", "X": "ˣ",
+        "a": "ᵃ", "b": "ᵇ", "c": "ᶜ", "d": "ᵈ", "e": "ᵉ", "f": "ᶠ", "g": "ᵍ",
+        "h": "ʰ", "i": "ⁱ", "j": "ʲ", "k": "ᵏ", "l": "ˡ", "m": "ᵐ", "o": "ᵒ",
+        "p": "ᵖ", "r": "ʳ", "s": "ˢ", "t": "ᵗ", "u": "ᵘ", "v": "ᵛ", "w": "ʷ",
+        "y": "ʸ", "z": "ᶻ",
+        "A": "ᵃ", "B": "ᵇ", "C": "ᶜ", "D": "ᵈ", "E": "ᵉ", "F": "ᶠ", "G": "ᵍ",
+        "H": "ʰ", "I": "ⁱ", "J": "ʲ", "K": "ᵏ", "L": "ˡ", "M": "ᵐ", "O": "ᵒ",
+        "P": "ᵖ", "R": "ʳ", "S": "ˢ", "T": "ᵗ", "U": "ᵘ", "V": "ᵛ", "W": "ʷ",
+        "Y": "ʸ", "Z": "ᶻ",
     }
     SUBS = {
         "0": "₀", "1": "₁", "2": "₂", "3": "₃", "4": "₄",
         "5": "₅", "6": "₆", "7": "₇", "8": "₈", "9": "₉",
-        "+": "₊", "-": "₋", "(": "₍", ")": "₎", "n": "ₙ", "x": "ₓ", "X": "ₓ",
+        "+": "₊", "-": "₋", "(": "₍", ")": "₎",
+        "n": "ₙ", "x": "ₓ", "X": "ₓ",
+        "a": "ₐ", "e": "ₑ", "h": "ₕ", "i": "ᵢ", "j": "ⱼ", "k": "ₖ", "l": "ₗ",
+        "m": "ₘ", "o": "ₒ", "p": "ₚ", "r": "ᵣ", "s": "ₛ", "t": "ₜ", "u": "ᵤ",
+        "v": "ᵥ", "y": "ᵧ",
+        "A": "ₐ", "E": "ₑ", "H": "ₕ", "I": "ᵢ", "J": "ⱼ", "K": "ₖ", "L": "ₗ",
+        "M": "ₘ", "O": "ₒ", "P": "ₚ", "R": "ᵣ", "S": "ₛ", "T": "ₜ", "U": "ᵤ",
+        "V": "ᵥ", "Y": "ᵧ",
     }
 
     def __init__(self, edit: QLineEdit):
@@ -164,10 +179,43 @@ class ExponentInputFilter(QObject):
             except Exception:
                 pass
 
+            # Convertir "/" en fracción visual: numerador en superíndice, denominador en subíndice
+            if text == "/":
+                s = self.edit.text() or ""
+                pos = self.edit.cursorPosition()
+                allowed_num = set("0123456789+-()nxXabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+                start = pos
+                while start > 0 and s[start - 1] in allowed_num:
+                    start -= 1
+                num_raw = s[start:pos]
+                if num_raw:
+                    num_sup = "".join(self.SUPERS.get(ch, ch) for ch in num_raw)
+                else:
+                    num_sup = ""
+                new_s = s[:start] + num_sup + "⁄" + s[pos:]
+                try:
+                    self._in_text_update = True
+                except Exception:
+                    pass
+                self.edit.setText(new_s)
+                self.edit.setCursorPosition(start + len(num_sup) + 1)
+                self.in_sub_mode = True
+                self.in_exp_mode = False
+                self._prev_star = False
+                try:
+                    self._in_text_update = False
+                except Exception:
+                    pass
+                return True
+
             # Si estamos en modo subíndice, convertir caracteres soportados
             if getattr(self, "in_sub_mode", False):
                 if text in self.SUBS:
                     self._insert(self.SUBS[text])
+                    return True
+                if text and text.isalpha():
+                    # Si no tenemos glifo subíndice, insertar paréntesis subíndice para mantener lectura
+                    self._insert("₍" + text + "₎")
                     return True
                 # Salir de modo subíndice si no es un carácter soportado
                 self.in_sub_mode = False
@@ -289,7 +337,7 @@ def _pretty_to_ascii(expr: str) -> str:
     if not expr:
         return expr
 
-    s = expr
+    s = expr.replace("⁄", "/")
 
     # 1) Raíz cuadrada: √( … )  -> sqrt( … )
     s = s.replace("√(", "sqrt(")
@@ -303,11 +351,18 @@ def _pretty_to_ascii(expr: str) -> str:
         "⁵": "5", "⁶": "6", "⁷": "7", "⁸": "8", "⁹": "9",
         "⁺": "+", "⁻": "-", "⁽": "(", "⁾": ")", "ⁿ": "n",
         "ˣ": "x",
+        "ᵃ": "a", "ᵇ": "b", "ᶜ": "c", "ᵈ": "d", "ᵉ": "e", "ᶠ": "f", "ᵍ": "g",
+        "ʰ": "h", "ⁱ": "i", "ʲ": "j", "ᵏ": "k", "ˡ": "l", "ᵐ": "m", "ᵒ": "o",
+        "ᵖ": "p", "ʳ": "r", "ˢ": "s", "ᵗ": "t", "ᵘ": "u", "ᵛ": "v", "ʷ": "w",
+        "ʸ": "y", "ᶻ": "z",
     })
     subs_map = str.maketrans({
         "₀": "0", "₁": "1", "₂": "2", "₃": "3", "₄": "4",
         "₅": "5", "₆": "6", "₇": "7", "₈": "8", "₉": "9",
         "₊": "+", "₋": "-", "₍": "(", "₎": ")", "ₙ": "n", "ₓ": "x",
+        "ₐ": "a", "ₑ": "e", "ₕ": "h", "ᵢ": "i", "ⱼ": "j", "ₖ": "k", "ₗ": "l",
+        "ₘ": "m", "ₒ": "o", "ₚ": "p", "ᵣ": "r", "ₛ": "s", "ₜ": "t", "ᵤ": "u",
+        "ᵥ": "v", "ᵧ": "y",
     })
 
     def _sup_repl(m: re.Match) -> str:
@@ -375,6 +430,8 @@ def _pretty_to_ascii(expr: str) -> str:
     s = _convert_log_subscripts(s)
     # 4) Convertir cualquier subíndice suelto a ASCII
     s = s.translate(subs_map)
+    # 5) Convertir cualquier superíndice suelto (fuera de potencias ya procesadas)
+    s = s.translate(supers_map)
 
     return s
 
@@ -732,8 +789,16 @@ class RootInputCard(QFrame):
                     "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹",
                     "+": "⁺", "-": "⁻", "(": "⁽", ")": "⁾", "n": "ⁿ",
                     "x": "ˣ", "X": "ˣ",
+                    "a": "ᵃ", "b": "ᵇ", "c": "ᶜ", "d": "ᵈ", "e": "ᵉ", "f": "ᶠ", "g": "ᵍ",
+                    "h": "ʰ", "i": "ⁱ", "j": "ʲ", "k": "ᵏ", "l": "ˡ", "m": "ᵐ", "o": "ᵒ",
+                    "p": "ᵖ", "r": "ʳ", "s": "ˢ", "t": "ᵗ", "u": "ᵘ", "v": "ᵛ", "w": "ʷ",
+                    "y": "ʸ", "z": "ᶻ",
+                    "A": "ᵃ", "B": "ᵇ", "C": "ᶜ", "D": "ᵈ", "E": "ᵉ", "F": "ᶠ", "G": "ᵍ",
+                    "H": "ʰ", "I": "ⁱ", "J": "ʲ", "K": "ᵏ", "L": "ˡ", "M": "ᵐ", "O": "ᵒ",
+                    "P": "ᵖ", "R": "ʳ", "S": "ˢ", "T": "ᵗ", "U": "ᵘ", "V": "ᵛ", "W": "ʷ",
+                    "Y": "ʸ", "Z": "ᶻ",
                 }
-                allowed = set("0123456789+-()nxX")
+                allowed = set("0123456789+-()nxXabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
                 i = 0
                 new = []
