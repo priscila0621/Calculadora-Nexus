@@ -13,12 +13,28 @@ from PySide6.QtWidgets import (
     QToolButton,
     QMenu,
     QScrollArea,
+    QComboBox,
+    QDialog,
+    QTextEdit as QTextEditWidget,
+    QDialogButtonBox,
+    QInputDialog,
+    QListWidget,
 )
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QTextCursor
 from fractions import Fraction
 from .theme import bind_font_scale_stylesheet, bind_theme_icon, make_overflow_icon, gear_icon_preferred
 from .settings_qt import open_settings_dialog
+
+
+class _ClickCombo(QComboBox):
+    """Combo compacto que se despliega al hacer click."""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFixedHeight(32)
+        self.setMinimumWidth(220)
+        self.setCursor(Qt.PointingHandCursor)
+        self.setEditable(False)
 
 
 def _parse_fraction(s: str) -> Fraction:
@@ -184,20 +200,42 @@ class OperacionesMatricesWindow(QMainWindow):
 
     def _build_objects_card(self) -> QFrame:
         card, lay = self._card("Objetos guardados")
-        self.objects_view = QTextEdit(); self.objects_view.setReadOnly(True)
-        bind_font_scale_stylesheet(self.objects_view, "font-family:Consolas,monospace;font-size:{body}px;", body=12)
-        lay.addWidget(self.objects_view, 1)
+        self.objects_list = QListWidget()
+        self.objects_list.setSelectionMode(QListWidget.SingleSelection)
+        bind_font_scale_stylesheet(self.objects_list, "font-family:Consolas,monospace;font-size:{body}px;", body=12)
+        self.objects_list.setMinimumHeight(200)
+        self.objects_list.itemSelectionChanged.connect(self._sync_object_actions)
+        lay.addWidget(self.objects_list, 1)
+
+        lay.addWidget(QLabel("Acciones sobre el objeto seleccionado en la lista:"))
+        combo_row = QHBoxLayout(); combo_row.setSpacing(6)
+        self.btn_edit_obj = QPushButton("Editar")
+        self.btn_edit_obj.setFixedHeight(32)
+        self.btn_edit_obj.clicked.connect(self._on_edit_obj)
+        combo_row.addWidget(self.btn_edit_obj)
+        self.btn_rename_obj = QPushButton("Renombrar")
+        self.btn_rename_obj.setFixedHeight(32)
+        self.btn_rename_obj.clicked.connect(self._on_rename_obj)
+        combo_row.addWidget(self.btn_rename_obj)
+        self.btn_delete_obj = QPushButton("Eliminar")
+        self.btn_delete_obj.setFixedHeight(32)
+        self.btn_delete_obj.clicked.connect(self._on_delete_obj)
+        combo_row.addWidget(self.btn_delete_obj)
+        combo_row.addStretch(1)
+        lay.addLayout(combo_row)
+        self._object_action_buttons = [self.btn_edit_obj, self.btn_rename_obj, self.btn_delete_obj]
+
         self._refresh_objects_view()
         return card
 
     def _build_expression_card(self) -> QFrame:
         card, lay = self._card("Expresion algebraica")
-        info = QLabel("Ejemplos: A(u+v), Au + Av, 3A + 2B, A(Bu + Cv), M*(u - 3v)")
+        info = QLabel("Ejemplos: A(u+v), Au + Av, 3A + 2B, A(Bu + Cv), M*(u - 3v). El motor valida dimensiones por ti.")
         info.setWordWrap(True)
         lay.addWidget(info)
 
         templates_row = QHBoxLayout(); templates_row.setSpacing(8)
-        templates_row.addWidget(QLabel("Plantillas rapidas:"))
+        templates_row.addWidget(QLabel("Plantillas guiadas:"))
         for label, builder in self._template_buttons():
             btn = QPushButton(label)
             btn.setMinimumHeight(30)
@@ -218,13 +256,10 @@ class OperacionesMatricesWindow(QMainWindow):
         ops_row.addStretch(1)
         lay.addLayout(ops_row)
 
-        lay.addWidget(QLabel("Inserta objetos guardados con un toque:"))
-        self.shortcuts_box = QFrame()
-        self.shortcuts_layout = QGridLayout(self.shortcuts_box)
-        self.shortcuts_layout.setContentsMargins(0, 0, 0, 0)
-        self.shortcuts_layout.setHorizontalSpacing(8)
-        self.shortcuts_layout.setVerticalSpacing(8)
-        lay.addWidget(self.shortcuts_box)
+        lay.addWidget(QLabel("Objetos guardados (click para desplegar e insertar en la expresion):"))
+        self.shortcuts_list = _ClickCombo()
+        self.shortcuts_list.activated.connect(self._on_combo_selected)
+        lay.addWidget(self.shortcuts_list)
 
         self.expr_edit = QTextEdit()
         self.expr_edit.setPlaceholderText("Escribe aqui la expresion...")
@@ -352,42 +387,182 @@ class OperacionesMatricesWindow(QMainWindow):
         return f"{base}{idx}"
 
     def _refresh_objects_view(self):
-        lines = []
+        self.objects_list.clear()
         for k in sorted(self.objects.keys()):
             obj = self.objects[k]
             if obj["type"] == "scalar":
-                lines.append(f"{k}: escalar = {_fmt(obj['value'])}")
+                label = f"{k}: escalar = {_fmt(obj['value'])}"
             elif obj["type"] == "vector":
-                lines.append(f"{k}: vector dim {len(obj['value'])} -> [{', '.join(_fmt(x) for x in obj['value'])}]")
+                label = f"{k}: vector dim {len(obj['value'])} -> [{', '.join(_fmt(x) for x in obj['value'])}]"
             else:
                 m = len(obj["value"]); n = len(obj["value"][0]) if m else 0
-                lines.append(f"{k}: matriz {m}x{n}")
-        self.objects_view.setPlainText("\n".join(lines))
-        if hasattr(self, "shortcuts_layout"):
+                label = f"{k}: matriz {m}x{n}"
+            self.objects_list.addItem(label)
+        has_objs = self.objects_list.count() > 0
+        for b in getattr(self, "_object_action_buttons", []):
+            b.setEnabled(has_objs and self._selected_object_name() is not None)
+        if hasattr(self, "shortcuts_list"):
             self._refresh_shortcuts()
+        self._sync_object_actions()
 
     def _refresh_shortcuts(self):
-        self._clear_layout(self.shortcuts_layout)
+        self.shortcuts_list.clear()
         names = sorted(self.objects.keys())
         if not names:
-            lbl = QLabel("Guarda matrices, vectores o escalares y tocalos aqui para insertarlos en la expresion.")
-            lbl.setWordWrap(True)
-            self.shortcuts_layout.addWidget(lbl, 0, 0)
+            self.shortcuts_list.addItem("Guarda matrices, vectores o escalares...")
+            self.shortcuts_list.setEnabled(False)
+            for b in getattr(self, "_object_action_buttons", []):
+                b.setEnabled(False)
             return
-        cols = 4
-        for idx, name in enumerate(names):
-            btn = QPushButton(name)
-            btn.setFixedHeight(30)
-            btn.setCursor(Qt.PointingHandCursor)
-            btn.clicked.connect(lambda _, t=name: self._insert_text(t))
-            row, col = divmod(idx, cols)
-            self.shortcuts_layout.addWidget(btn, row, col)
+        self.shortcuts_list.setEnabled(True)
+        for b in getattr(self, "_object_action_buttons", []):
+            b.setEnabled(True)
+        self.shortcuts_list.addItem("Selecciona y se insertara...")
+        for name in names:
+            self.shortcuts_list.addItem(name)
+        self.shortcuts_list.setCurrentIndex(0)
+        # Mantener seleccion en lista de objetos si coincide
+        if self.objects_list.count() > 0:
+            self.objects_list.setCurrentRow(0)
 
     def _insert_text(self, text: str):
         cursor = self.expr_edit.textCursor()
         cursor.insertText(text)
         self.expr_edit.setTextCursor(cursor)
         self.expr_edit.setFocus()
+
+    def _on_combo_selected(self, index: int):
+        if index <= 0:
+            return
+        text = self.shortcuts_list.itemText(index)
+        self._insert_text(text)
+        self.shortcuts_list.setCurrentIndex(0)
+        # sincroniza botones con seleccion de lista si coincide
+        items = self.objects_list.findItems(f"{text}:", Qt.MatchStartsWith)
+        if items:
+            self.objects_list.setCurrentItem(items[0])
+        self._sync_object_actions()
+
+    def _selected_object_name(self):
+        sel = self.objects_list.currentItem()
+        if sel is None:
+            return None
+        text = sel.text()
+        name = text.split(":", 1)[0].strip()
+        return name if name in self.objects else None
+
+    def _on_delete_obj(self):
+        name = self._selected_object_name()
+        if not name:
+            QMessageBox.information(self, "Selecciona objeto", "Primero elige un objeto para eliminar.")
+            return
+        confirm = QMessageBox.question(self, "Confirmar", f"¿Eliminar '{name}'?")
+        if confirm != QMessageBox.Yes:
+            return
+        try:
+            self.objects.pop(name, None)
+            self._refresh_objects_view()
+        except Exception as exc:
+            QMessageBox.warning(self, "Error", f"No se pudo eliminar: {exc}")
+        self._sync_object_actions()
+
+    def _on_rename_obj(self):
+        name = self._selected_object_name()
+        if not name:
+            QMessageBox.information(self, "Selecciona objeto", "Primero elige un objeto para renombrar.")
+            return
+        new, ok = QInputDialog.getText(self, "Renombrar objeto", "Nuevo nombre:", text=name)
+        if not ok:
+            return
+        new = (new or "").strip()
+        if not new.isalpha():
+            QMessageBox.warning(self, "Aviso", "Usa solo letras para el nombre.")
+            return
+        if new in self.objects and new != name:
+            QMessageBox.warning(self, "Aviso", "Ya existe un objeto con ese nombre.")
+            return
+        try:
+            self.objects[new] = self.objects.pop(name)
+            self._refresh_objects_view()
+        except Exception as exc:
+            QMessageBox.warning(self, "Error", f"No se pudo renombrar: {exc}")
+        self._sync_object_actions()
+
+    def _on_edit_obj(self):
+        name = self._selected_object_name()
+        if not name:
+            QMessageBox.information(self, "Selecciona objeto", "Primero elige un objeto para editar.")
+            return
+        obj = self.objects.get(name)
+        if not obj:
+            return
+        tip = obj["type"]
+        dlg = QDialog(self)
+        dlg.setWindowTitle(f"Editar {name}")
+        lay = QVBoxLayout(dlg)
+        hint = QLabel(self._edit_hint(tip))
+        hint.setWordWrap(True)
+        lay.addWidget(hint)
+        editor = QTextEditWidget()
+        editor.setMinimumHeight(140)
+        editor.setText(self._edit_prefill(obj))
+        lay.addWidget(editor)
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        lay.addWidget(buttons)
+        buttons.accepted.connect(dlg.accept)
+        buttons.rejected.connect(dlg.reject)
+        if dlg.exec() != QDialog.Accepted:
+            return
+        try:
+            new_obj = self._parse_edit_content(tip, editor.toPlainText())
+            self.objects[name] = new_obj
+            self._refresh_objects_view()
+        except Exception as exc:
+            QMessageBox.warning(self, "Error", f"No se pudo guardar: {exc}")
+        self._sync_object_actions()
+
+    def _edit_hint(self, tip: str) -> str:
+        if tip == "scalar":
+            return "Escalar: escribe un numero (fraccion opcional, ej. 3/2)."
+        if tip == "vector":
+            return "Vector: un valor por linea."
+        return "Matriz: separa filas por lineas y valores por espacios o comas."
+
+    def _edit_prefill(self, obj):
+        if obj["type"] == "scalar":
+            return _fmt(obj["value"])
+        if obj["type"] == "vector":
+            return "\n".join(_fmt(x) for x in obj["value"])
+        if obj["type"] == "matrix":
+            return "\n".join(" ".join(_fmt(x) for x in row) for row in obj["value"])
+        return ""
+
+    def _parse_edit_content(self, tip: str, text: str):
+        text = (text or "").strip()
+        if tip == "scalar":
+            return {"type": "scalar", "value": _parse_fraction(text or "0")}
+        lines = [ln.strip() for ln in text.splitlines() if ln.strip() != ""]
+        if tip == "vector":
+            vals = [_parse_fraction(x) for x in lines] if lines else [Fraction(0)]
+            return {"type": "vector", "value": vals}
+        # matrix
+        rows = []
+        for ln in lines:
+            parts = [p for p in ln.replace(",", " ").split() if p]
+            rows.append([_parse_fraction(p) for p in parts])
+        if not rows:
+            rows = [[Fraction(0)]]
+        # ensure rectangular
+        widths = {len(r) for r in rows}
+        if len(widths) != 1:
+            raise ValueError("Todas las filas deben tener la misma cantidad de columnas.")
+        return {"type": "matrix", "value": rows}
+
+    def _sync_object_actions(self):
+        selected = self._selected_object_name()
+        enabled = selected is not None
+        for b in getattr(self, "_object_action_buttons", []):
+            b.setEnabled(enabled)
 
     def _apply_template(self, text: str):
         self.expr_edit.setPlainText(text)
