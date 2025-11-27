@@ -1,7 +1,8 @@
 ﻿from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QScrollArea, QGridLayout, QLineEdit, QTextEdit, QMessageBox, QFrame,
-    QRadioButton, QCheckBox, QToolButton, QMenu, QSizePolicy, QDialog
+    QRadioButton, QCheckBox, QToolButton, QMenu, QSizePolicy, QDialog,
+    QListWidget, QListWidgetItem
 )
 from PySide6.QtCore import Qt, QSize
 from fractions import Fraction
@@ -1022,6 +1023,36 @@ class TranspuestaMatrizWindow(_BaseMatrixWindow):
         except Exception:
             pass
 
+        # Historial de resultados: guardar y comparar varias operaciones sin borrar entradas
+        try:
+            self.results_history = []  # lista de tuples (title, matrix, pasos_text)
+            hist_frame = QFrame()
+            hist_layout = QVBoxLayout(hist_frame)
+            hist_layout.setContentsMargins(6, 6, 6, 6)
+            hist_layout.addWidget(QLabel("Historial de resultados"))
+            self.history_list = QListWidget()
+            hist_layout.addWidget(self.history_list)
+            hbtns = QHBoxLayout()
+            self.btn_hist_save = QPushButton("Guardar resultado")
+            self.btn_hist_show = QPushButton("Mostrar")
+            self.btn_hist_del = QPushButton("Eliminar")
+            self.btn_hist_save.clicked.connect(self._history_save)
+            self.btn_hist_show.clicked.connect(self._history_show)
+            self.btn_hist_del.clicked.connect(self._history_del)
+            hbtns.addWidget(self.btn_hist_save)
+            hbtns.addWidget(self.btn_hist_show)
+            hbtns.addWidget(self.btn_hist_del)
+            hist_layout.addLayout(hbtns)
+            # Preview area (uses same matrix widget) dentro de un scroll
+            self.history_preview = QScrollArea(); self.history_preview.setWidgetResizable(True)
+            ph = QWidget(); ph_l = QVBoxLayout(ph); ph_l.setContentsMargins(0,0,0,0)
+            ph_l.addWidget(QLabel("Vista previa del resultado seleccionado"))
+            self.history_preview.setWidget(ph)
+            hist_layout.addWidget(self.history_preview)
+            self.lay.addWidget(hist_frame)
+        except Exception:
+            pass
+
     def _run(self):
         # Leer matriz A
         A = self._leer()
@@ -1063,63 +1094,156 @@ class TranspuestaMatrizWindow(_BaseMatrixWindow):
         try:
             if getattr(self, 'adv_checkbox', None) and self.adv_checkbox.isChecked():
                 B = read_B()
+                # comprobar definibilidad antes de calcular
+                defined = True
+                def add_defined_msg(msgs, ok):
+                    msgs.append("\nDefinición: " + ("Definida" if ok else "No definida"))
                 if self.rb_transpose.isChecked():
                     T = transpose(A)
                     title = "Resultado (A^T)"
                     pasos = ["Se calcula A^T intercambiando índices (i,j) -> (j,i)."]
+                    # detalle paso a paso por elemento
+                    pasos_elem = []
+                    for i in range(len(A)):
+                        for j in range(len(A[0]) if A else 0):
+                            pasos_elem.append(f"T[{j+1},{i+1}] = A[{i+1},{j+1}] = {A[i][j]}")
+                    pasos.extend(pasos_elem)
                     self._show_matrix_result(T, title=title)
                 elif self.rb_atx.isChecked():
                     if B is None:
                         raise ValueError("Ingrese vector/matriz B para esta operación")
                     T = transpose(A)
                     # T * x
-                    R = mul(T, B)
+                    # comprobar dimensiones: T (c x f), B (rB x cB) -> require c == rB
+                    rT = len(T); cT = len(T[0]) if rT else 0
+                    rB = len(B); cB = len(B[0]) if rB else 0
+                    defined = (cT == rB)
                     title = "Resultado (A^T x)"
-                    pasos = [f"Se calcula A^T (size {len(T)}x{len(T[0])}) y se multiplica por B"]
-                    self._show_matrix_result(R, title=title)
+                    pasos = [f"A^T size {rT} x {cT}; B size {rB} x {cB}."]
+                    add_defined_msg(pasos, defined)
+                    if defined:
+                        R = mul(T, B)
+                        # pasos por elemento del producto
+                        for i in range(len(R)):
+                            for j in range(len(R[0])):
+                                terms = []
+                                for k in range(cT):
+                                    terms.append(f"{T[i][k]}*{B[k][j]}")
+                                val = R[i][j]
+                                pasos.append(f"R[{i+1},{j+1}] = " + " + ".join(terms) + f" = {val}")
+                        self._show_matrix_result(R, title=title)
+                    else:
+                        self._show_matrix_result([["--"]], title=title)
                 elif self.rb_axT.isChecked():
                     if B is None:
                         raise ValueError("Ingrese vector x para calcular (Ax)^T")
-                    R = mul(A, B)
-                    RT = transpose(R)
+                    # comprobar dimensiones: A (f x c), B (rB x cB) => c == rB
+                    rA = len(A); cA = len(A[0]) if rA else 0
+                    rB = len(B); cB = len(B[0]) if rB else 0
+                    defined = (cA == rB)
                     title = "Resultado ((Ax)^T)"
-                    pasos = ["Se calcula Ax y luego se transpone el resultado."]
-                    self._show_matrix_result(RT, title=title)
+                    pasos = [f"A size {rA}x{cA}; B size {rB}x{cB}."]
+                    add_defined_msg(pasos, defined)
+                    if defined:
+                        R = mul(A, B)
+                        pasos.append("Cálculo de Ax (por elementos):")
+                        for i in range(len(R)):
+                            for j in range(len(R[0])):
+                                terms = []
+                                for k in range(cA):
+                                    terms.append(f"{A[i][k]}*{B[k][j]}")
+                                pasos.append(f"(Ax)[{i+1},{j+1}] = " + " + ".join(terms) + f" = {R[i][j]}")
+                        RT = transpose(R)
+                        pasos.append("Transpose de (Ax):")
+                        for i in range(len(R)):
+                            for j in range(len(R[0])):
+                                pasos.append(f"((Ax)^T)[{j+1},{i+1}] = (Ax)[{i+1},{j+1}] = {R[i][j]}")
+                        self._show_matrix_result(RT, title=title)
+                    else:
+                        self._show_matrix_result([["--"]], title=title)
                 elif self.rb_xTA_T.isChecked():
                     if B is None:
                         raise ValueError("Ingrese vector x para calcular x^T A^T")
                     T = transpose(A)
-                    # x^T A^T = (A x)^T? we compute x^T * A^T
-                    R = mul(B, T)
+                    # comprobar dimensiones: B (rB x cB) as x^T ? we'll treat B as column x (rB x 1) or row accordingly
+                    rT = len(T); cT = len(T[0]) if rT else 0
+                    rB = len(B); cB = len(B[0]) if rB else 0
+                    # x^T * A^T requires x^T (1 x n) and A^T (n x m) -> cB == rT
+                    defined = (cB == rT)
                     title = "Resultado (x^T A^T)"
-                    pasos = ["Se calcula x^T * A^T directamente con multiplicación de matrices"]
-                    self._show_matrix_result(R, title=title)
+                    pasos = [f"x size {rB}x{cB}; A^T size {rT}x{cT}."]
+                    add_defined_msg(pasos, defined)
+                    if defined:
+                        R = mul(B, T)
+                        for i in range(len(R)):
+                            for j in range(len(R[0])):
+                                terms = [f"{B[i][k]}*{T[k][j]}" for k in range(len(T))]
+                                pasos.append(f"R[{i+1},{j+1}] = " + " + ".join(terms) + f" = {R[i][j]}")
+                        self._show_matrix_result(R, title=title)
+                    else:
+                        self._show_matrix_result([["--"]], title=title)
                 elif self.rb_xxT.isChecked():
                     if B is None:
                         raise ValueError("Ingrese vector x para calcular x x^T")
                     # asumimos B es x (columna). x x^T = x * x^T -> m x m
-                    XT = transpose(B)
-                    R = mul(B, XT)
+                    rB = len(B); cB = len(B[0]) if rB else 0
+                    defined = (cB == 1)
                     title = "Resultado (x x^T)"
-                    pasos = ["Se multiplica x (columna) por x^T (fila) para obtener matriz m x m"]
-                    self._show_matrix_result(R, title=title)
+                    pasos = [f"x size {rB}x{cB}."]
+                    add_defined_msg(pasos, defined)
+                    if defined:
+                        XT = transpose(B)
+                        R = mul(B, XT)
+                        for i in range(len(R)):
+                            for j in range(len(R[0])):
+                                terms = [f"{B[i][k]}*{XT[k][j]}" for k in range(len(B))]
+                                pasos.append(f"R[{i+1},{j+1}] = " + " + ".join(terms) + f" = {R[i][j]}")
+                        self._show_matrix_result(R, title=title)
+                    else:
+                        self._show_matrix_result([["--"]], title=title)
                 elif self.rb_xTx.isChecked():
                     if B is None:
                         raise ValueError("Ingrese vector x para calcular x^T x")
-                    XT = transpose(B)
-                    R = mul(XT, B)
+                    rB = len(B); cB = len(B[0]) if rB else 0
+                    defined = (cB == 1)
                     title = "Resultado (x^T x)"
-                    pasos = ["Se calcula x^T x (producto escalar, matriz 1x1)"]
-                    self._show_matrix_result(R, title=title)
+                    pasos = [f"x size {rB}x{cB}."]
+                    add_defined_msg(pasos, defined)
+                    if defined:
+                        XT = transpose(B)
+                        R = mul(XT, B)
+                        # paso por paso suma de componentes
+                        s_terms = []
+                        for k in range(rB):
+                            s_terms.append(f"{XT[0][k]}*{B[k][0]} = {XT[0][k]*B[k][0]}")
+                        pasos.append("x^T x = " + " + ".join([t.split(' = ')[0] for t in s_terms]) + " = " + str(R[0][0]))
+                        pasos.extend(["  -> " + t for t in s_terms])
+                        self._show_matrix_result(R, title=title)
+                    else:
+                        self._show_matrix_result([["--"]], title=title)
                 else:
                     raise ValueError("Operación no soportada")
                 # escribir pasos
+                # guardar último resultado por compatibilidad y para permitir guardarlo en historial
+                self._last_shown_matrix = None
+                # intentar recuperar la matriz mostrada desde _last_result_matrix
+                try:
+                    self._last_shown_matrix = self._last_result_matrix
+                except Exception:
+                    self._last_shown_matrix = None
+                self._last_shown_title = title
+                pasos_text = "\n".join(pasos)
+                self._last_shown_steps = pasos_text
+                # mostrar pasos detallados
                 self.result_box.clear()
                 self.result_box.insertPlainText(title + "\n\n")
                 for p in pasos:
                     self.result_box.insertPlainText(p + "\n")
-                # guardar último resultado por compatibilidad
-                self._last_transpose = getattr(self, '_last_transpose', None)
+                # habilitar botón guardar historial si existe
+                try:
+                    self.btn_hist_save.setEnabled(True)
+                except Exception:
+                    pass
             else:
                 # comportamiento por defecto: solo transponer A
                 T = transpose(A)
@@ -1188,6 +1312,54 @@ class TranspuestaMatrizWindow(_BaseMatrixWindow):
                 self.grid_b.addWidget(e, i, j)
                 row.append(e)
             self.vector_entries.append(row)
+
+    # Historial helpers
+    def _history_save(self):
+        try:
+            M = getattr(self, '_last_shown_matrix', None)
+            title = getattr(self, '_last_shown_title', None)
+            pasos = getattr(self, '_last_shown_steps', None)
+            if M is None:
+                # if last_result_matrix holds something useful, use it
+                M = getattr(self, '_last_result_matrix', None)
+            if M is None:
+                QMessageBox.information(self, "Nada para guardar", "No hay resultado visible para guardar en el historial.")
+                return
+            idx = len(self.results_history) + 1
+            item_title = f"{idx}. {title}"
+            self.results_history.append((item_title, M, pasos))
+            self.history_list.addItem(item_title)
+        except Exception as exc:
+            QMessageBox.warning(self, "Error", str(exc))
+
+    def _history_show(self):
+        try:
+            cur = self.history_list.currentRow()
+            if cur < 0 or cur >= len(self.results_history):
+                QMessageBox.information(self, "Selecciona uno", "Selecciona un resultado del historial para mostrar.")
+                return
+            title, M, pasos = self.results_history[cur]
+            self._show_matrix_result(M, title=title)
+            if pasos:
+                self.result_box.clear()
+                self.result_box.insertPlainText(title + "\n\n" + pasos)
+            # actualizar preview
+            try:
+                self.history_preview.setWidget(_matrix_widget(self, M))
+            except Exception:
+                pass
+        except Exception as exc:
+            QMessageBox.warning(self, "Error", str(exc))
+
+    def _history_del(self):
+        try:
+            cur = self.history_list.currentRow()
+            if cur < 0:
+                return
+            self.history_list.takeItem(cur)
+            del self.results_history[cur]
+        except Exception as exc:
+            QMessageBox.warning(self, "Error", str(exc))
 
 
 class DeterminanteMatrizWindow(_BaseMatrixWindow):
