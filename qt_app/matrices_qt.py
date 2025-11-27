@@ -1280,9 +1280,11 @@ class TranspuestaMatrizWindow(_BaseMatrixWindow):
                         R = mul(B, XT)
                         result_matrix = R
                         steps.append("5) Cálculo paso a paso:")
+                        # inner dimension = número de columnas de B
+                        m = len(B[0]) if (B and len(B[0])>0) else 0
                         for i in range(len(R)):
                             for j in range(len(R[0])):
-                                terms = [f"{B[i][k]}·{XT[k][j]}" for k in range(len(B))]
+                                terms = [f"{B[i][k]}·{XT[k][j]}" for k in range(m)]
                                 steps.append(f"   R[{i+1},{j+1}] = " + " + ".join(terms) + f" = {R[i][j]}")
                         steps.append("6) Resultado final:")
                         for ln in mat_lines(R): steps.append("     " + ln)
