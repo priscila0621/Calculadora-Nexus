@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QToolButton,
     QMenu,
+    QScrollArea,
 )
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QTextCursor
@@ -46,8 +47,12 @@ class OperacionesMatricesWindow(QMainWindow):
         self.matrix_entries = []
         self.vector_entries = []
 
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
         outer = QWidget()
-        self.setCentralWidget(outer)
+        scroll.setWidget(outer)
+        self.setCentralWidget(scroll)
+
         root = QVBoxLayout(outer)
         root.setContentsMargins(24, 24, 24, 24)
         root.setSpacing(12)
@@ -190,12 +195,49 @@ class OperacionesMatricesWindow(QMainWindow):
         info = QLabel("Ejemplos: A(u+v), Au + Av, 3A + 2B, A(Bu + Cv), M*(u - 3v)")
         info.setWordWrap(True)
         lay.addWidget(info)
+
+        templates_row = QHBoxLayout(); templates_row.setSpacing(8)
+        templates_row.addWidget(QLabel("Plantillas rapidas:"))
+        for label, builder in self._template_buttons():
+            btn = QPushButton(label)
+            btn.setMinimumHeight(30)
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.clicked.connect(lambda _, fn=builder: self._apply_template(fn()))
+            templates_row.addWidget(btn)
+        templates_row.addStretch(1)
+        lay.addLayout(templates_row)
+
+        ops_row = QHBoxLayout(); ops_row.setSpacing(6)
+        ops_row.addWidget(QLabel("Atajos de simbolos:"))
+        for sym in ["+", "-", "*", "(", ")"]:
+            b = QPushButton(sym)
+            b.setFixedWidth(42)
+            b.setCursor(Qt.PointingHandCursor)
+            b.clicked.connect(lambda _, t=sym: self._insert_text(t))
+            ops_row.addWidget(b)
+        ops_row.addStretch(1)
+        lay.addLayout(ops_row)
+
+        lay.addWidget(QLabel("Inserta objetos guardados con un toque:"))
+        self.shortcuts_box = QFrame()
+        self.shortcuts_layout = QGridLayout(self.shortcuts_box)
+        self.shortcuts_layout.setContentsMargins(0, 0, 0, 0)
+        self.shortcuts_layout.setHorizontalSpacing(8)
+        self.shortcuts_layout.setVerticalSpacing(8)
+        lay.addWidget(self.shortcuts_box)
+
         self.expr_edit = QTextEdit()
         self.expr_edit.setPlaceholderText("Escribe aqui la expresion...")
         self.expr_edit.setFixedHeight(90)
         lay.addWidget(self.expr_edit)
+        btn_row = QHBoxLayout()
+        btn_clear = QPushButton("Limpiar"); btn_clear.clicked.connect(self._limpiar_pantalla)
+        btn_row.addWidget(btn_clear)
+        btn_row.addStretch(1)
         btn = QPushButton("Calcular"); btn.clicked.connect(self._calcular_expresion)
-        lay.addWidget(btn, alignment=Qt.AlignRight)
+        btn_row.addWidget(btn)
+        lay.addLayout(btn_row)
+        self._refresh_shortcuts()
         return card
 
     def _build_result_card(self) -> QFrame:
@@ -321,6 +363,90 @@ class OperacionesMatricesWindow(QMainWindow):
                 m = len(obj["value"]); n = len(obj["value"][0]) if m else 0
                 lines.append(f"{k}: matriz {m}x{n}")
         self.objects_view.setPlainText("\n".join(lines))
+        if hasattr(self, "shortcuts_layout"):
+            self._refresh_shortcuts()
+
+    def _refresh_shortcuts(self):
+        self._clear_layout(self.shortcuts_layout)
+        names = sorted(self.objects.keys())
+        if not names:
+            lbl = QLabel("Guarda matrices, vectores o escalares y tocalos aqui para insertarlos en la expresion.")
+            lbl.setWordWrap(True)
+            self.shortcuts_layout.addWidget(lbl, 0, 0)
+            return
+        cols = 4
+        for idx, name in enumerate(names):
+            btn = QPushButton(name)
+            btn.setFixedHeight(30)
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.clicked.connect(lambda _, t=name: self._insert_text(t))
+            row, col = divmod(idx, cols)
+            self.shortcuts_layout.addWidget(btn, row, col)
+
+    def _insert_text(self, text: str):
+        cursor = self.expr_edit.textCursor()
+        cursor.insertText(text)
+        self.expr_edit.setTextCursor(cursor)
+        self.expr_edit.setFocus()
+
+    def _apply_template(self, text: str):
+        self.expr_edit.setPlainText(text)
+        cursor = self.expr_edit.textCursor()
+        cursor.movePosition(QTextCursor.End)
+        self.expr_edit.setTextCursor(cursor)
+        self.expr_edit.setFocus()
+
+    def _template_buttons(self):
+        def first_of_type(t, fallback):
+            for name, obj in self.objects.items():
+                if obj.get("type") == t:
+                    return name
+            return fallback
+
+        def second_matrix(primary):
+            for name, obj in self.objects.items():
+                if obj.get("type") == "matrix" and name != primary:
+                    return name
+            return "B" if primary != "B" else "C"
+
+        def template_av():
+            A = first_of_type("matrix", "A")
+            u = first_of_type("vector", "u")
+            v = "v" if u != "v" else "w"
+            return f"{A}({u}+{v})"
+
+        def template_distrib():
+            A = first_of_type("matrix", "A")
+            u = first_of_type("vector", "u")
+            v = "v" if u != "v" else "w"
+            return f"{A}{u} + {A}{v}"
+
+        def template_lineal_combo():
+            A = first_of_type("matrix", "A")
+            B = second_matrix(A)
+            return f"3{A} + 2{B}"
+
+        def template_nested():
+            A = first_of_type("matrix", "A")
+            B = second_matrix(A)
+            u = first_of_type("vector", "u")
+            c = first_of_type("scalar", "c")
+            v = "v" if u != "v" else "w"
+            return f"{A}({B}{u} + {c}{v})"
+
+        def template_mix():
+            A = first_of_type("matrix", "A")
+            u = first_of_type("vector", "u")
+            v = "v" if u != "v" else "w"
+            return f"{A}*({u} - 3{v})"
+
+        return [
+            ("A(u+v)", template_av),
+            ("Au + Av", template_distrib),
+            ("3A + 2B", template_lineal_combo),
+            ("A(Bu+Cv)", template_nested),
+            ("A*(u-3v)", template_mix),
+        ]
 
     # ---------------- Algebra ----------------
     def _add(self, a, b):
@@ -480,6 +606,54 @@ class OperacionesMatricesWindow(QMainWindow):
                 return self._mul(a, b)
         raise ValueError("Nodo invalido.")
 
+    def _eval_with_log(self, node, log):
+        kind = node[0]
+        if kind == "scalar":
+            return {"type": "scalar", "value": node[1]}, _fmt(node[1])
+        if kind == "id":
+            return self.objects[node[1]], node[1]
+        if kind == "op":
+            op, left, right = node[1], node[2], node[3]
+            a, a_label = self._eval_with_log(left, log)
+            b, b_label = self._eval_with_log(right, log)
+            if op == "+":
+                res = self._add(a, b)
+                log.append(f"{a_label} + {b_label} -> {self._describe_obj(res)}")
+                return res, f"({a_label}+{b_label})"
+            if op == "-":
+                res = self._sub(a, b)
+                log.append(f"{a_label} - {b_label} -> {self._describe_obj(res)}")
+                return res, f"({a_label}-{b_label})"
+            if op == "*":
+                res = self._mul(a, b)
+                log.append(f"{a_label} * {b_label} -> {self._describe_obj(res)}")
+                return res, f"{a_label}*{b_label}"
+        raise ValueError("Nodo invalido.")
+
+    def _describe_obj(self, obj):
+        if obj["type"] == "scalar":
+            return "escalar"
+        if obj["type"] == "vector":
+            return f"vector dim {len(obj['value'])}"
+        if obj["type"] == "matrix":
+            m = len(obj["value"]); n = len(obj["value"][0]) if m else 0
+            return f"matriz {m}x{n}"
+        return "objeto"
+
+    def _ast_lines(self, node, depth=0):
+        pad = "  " * depth
+        if node[0] == "scalar":
+            return [f"{pad}scalar {_fmt(node[1])}"]
+        if node[0] == "id":
+            return [f"{pad}id {node[1]}"]
+        if node[0] == "op":
+            op = node[1]
+            lines = [f"{pad}{op}"]
+            lines.extend(self._ast_lines(node[2], depth + 1))
+            lines.extend(self._ast_lines(node[3], depth + 1))
+            return lines
+        return [f"{pad}{node}"]
+
     # ---------------- Formato y acciones ----------------
     def _format_value(self, obj):
         if obj["type"] == "scalar":
@@ -511,9 +685,24 @@ class OperacionesMatricesWindow(QMainWindow):
         try:
             tokens = self._tokenize(expr)
             ast = self._parse(tokens)
-            res = self._eval(ast)
+            pasos = []
+            res, _ = self._eval_with_log(ast, pasos)
+            proc = []
+            proc.append("Tokens: " + " ".join(tokens))
+            proc.append("")
+            proc.append("Arbol sintactico:")
+            proc.extend(self._ast_lines(ast))
+            proc.append("")
+            proc.append("Operaciones:")
+            if pasos:
+                for idx, line in enumerate(pasos, 1):
+                    proc.append(f"{idx}. {line}")
+            else:
+                proc.append("Sin operaciones registradas.")
             html = []
             html.append("<b>Expresion:</b> " + expr)
+            html.append(self._pre("\n".join(proc)))
+            html.append("<b>Resultado:</b>")
             html.append(self._pre(self._format_value(res)))
             self.result_box.setHtml("\n".join(html))
             self.result_box.moveCursor(QTextCursor.End)
