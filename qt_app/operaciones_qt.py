@@ -915,6 +915,59 @@ class OperacionesMatricesWindow(QMainWindow):
             return "\n".join(lines)
         return ""
 
+    # ---------------- Heuristica de regla ----------------
+    def _node_type(self, node):
+        if node[0] == "scalar":
+            return "scalar"
+        if node[0] == "id":
+            return self.objects.get(node[1], {}).get("type", "desconocido")
+        if node[0] == "op":
+            try:
+                return self._eval(node)["type"]
+            except Exception:
+                return "expr"
+        return "expr"
+
+    def _rule_from_ast(self, ast):
+        if ast[0] != "op":
+            return "Expresion simple (sin operadores)."
+        op = ast[1]
+        tL = self._node_type(ast[2])
+        tR = self._node_type(ast[3])
+
+        def describe_sum(node):
+            if node[0] == "op" and node[1] in ("+", "-"):
+                t_a = self._node_type(node[2]); t_b = self._node_type(node[3])
+                nombre = "suma" if node[1] == "+" else "resta"
+                if t_a == t_b == "matrix":
+                    return f" (la matriz proviene de una {nombre} de matrices antes de este producto)"
+                if t_a == t_b == "vector":
+                    return f" (el vector proviene de una {nombre} de vectores antes de este producto)"
+            return ""
+
+        if op in ("+", "-"):
+            nombre = "Suma" if op == "+" else "Resta"
+            if tL == tR == "scalar":
+                return f"{nombre} de escalares."
+            if tL == tR == "vector":
+                return f"{nombre} de vectores (componente a componente)."
+            if tL == tR == "matrix":
+                return f"{nombre} de matrices (elemento a elemento)."
+            return f"{nombre} de expresiones (se evalúan los términos y luego se combinan)."
+        if op == "*":
+            if "scalar" in (tL, tR) and "vector" in (tL, tR):
+                other = ast[3] if tL == "scalar" else ast[2]
+                return "Producto escalar por vector (escala cada componente)" + describe_sum(other) + "."
+            if "scalar" in (tL, tR) and "matrix" in (tL, tR):
+                other = ast[3] if tL == "scalar" else ast[2]
+                return "Producto escalar por matriz (escala cada elemento)" + describe_sum(other) + "."
+            if tL == "matrix" and tR == "vector":
+                return "Producto matriz por vector (filas por columnas)."
+            if tL == "matrix" and tR == "matrix":
+                return "Producto de matrices (filas por columnas)."
+            return "Producto de expresiones (aplica reglas por termino)."
+        return "Operacion compuesta (se muestran los pasos detallados)."
+
     def _calcular_expresion(self):
         expr = self.expr_edit.toPlainText().strip()
         if not expr:
@@ -965,20 +1018,7 @@ class OperacionesMatricesWindow(QMainWindow):
                 types_lines.append(node_ident(right))
 
             # Regla aplicada (simple heuristica sobre el nodo raiz)
-            rule = 'Regla no identificada.'
-            if ast[0] == 'op' and ast[1] == '*':
-                # obtener tipos reales evaluando nodos sin logs
-                def get_type(n):
-                    if n[0] == 'id':
-                        return self.objects[n[1]]['type']
-                    return 'scalar' if n[0] == 'scalar' else 'expr'
-                tL = get_type(ast[2]); tR = get_type(ast[3])
-                if (tL == 'matrix' and tR == 'scalar') or (tL == 'scalar' and tR == 'matrix'):
-                    rule = 'Multiplicación matriz por escalar (cada elemento multiplicado por el escalar).'
-                elif tL == 'matrix' and tR == 'vector':
-                    rule = 'Producto filas × columnas (matriz × vector).'
-                elif tL == 'matrix' and tR == 'matrix':
-                    rule = 'Producto filas × columnas (matriz × matriz).'
+            rule = self._rule_from_ast(ast)
 
             # Procedimiento: usar pasos generados por _eval_with_log
             proc = []
