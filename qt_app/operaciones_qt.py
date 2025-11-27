@@ -1060,7 +1060,7 @@ class OperacionesMatricesWindow(QMainWindow):
         self.expr_edit.clear()
 
     def _pre(self, text):
-        return "<pre style='background:#fffaf5;padding:10px;border:1px solid #f5d0c5;border-radius:6px;'>" + text + "</pre>"
+        return "<pre style='padding:10px;'>" + text + "</pre>"
 
 
 # Modo directo
