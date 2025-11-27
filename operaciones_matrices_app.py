@@ -51,6 +51,26 @@ class OperacionesMatricesApp:
             raise ValueError("Los vectores u y v deben tener la misma longitud.")
         return [a * ui + b * vi for ui, vi in zip(u, v)]
 
+    def _detalle_combinacion(self, u, v, a=1, b=1, nombre="u+v"):
+        lines = []
+        for idx, (ui, vi) in enumerate(zip(u, v), 1):
+            parcial_u = a * ui
+            parcial_v = b * vi
+            total = parcial_u + parcial_v
+            term_u = f"{self._fmt(a)}*{self._fmt(ui)}"
+            term_v = f"{self._fmt(b)}*{self._fmt(vi)}"
+            lines.append(f"{nombre}[{idx}] = {term_u} + {term_v} = {self._fmt(parcial_u)} + "
+                         f"{self._fmt(parcial_v)} = {self._fmt(total)}")
+        return lines
+
+    def _detalle_mat_vec(self, A, x, nombre="A"):
+        lines = []
+        for i, fila in enumerate(A, 1):
+            productos = [f"{self._fmt(fila[j])}*{self._fmt(x[j])}" for j in range(len(x))]
+            total = sum(fila[j] * x[j] for j in range(len(x)))
+            lines.append(f"{nombre}[fila {i}] = " + " + ".join(productos) + f" = {self._fmt(total)}")
+        return lines
+
     # ---------------- estilos y UI ----------------
     def _setup_styles(self):
         style = ttk.Style()
@@ -244,18 +264,31 @@ class OperacionesMatricesApp:
             lines.append("v =")
             lines.append(self._format_vector(v))
             lines.append("")
+            lines.append("Paso 1: vector u + v (entrada a entrada)")
             lines.append("u + v =")
             lines.append(self._format_vector(u_mas_v))
             lines.append("")
+            lines.extend(self._detalle_combinacion(u, v, 1, 1, "u+v"))
+            lines.append("")
+            lines.append("Paso 2: aplicar A a (u+v) (producto fila x columna)")
             lines.append("A(u+v) =")
             lines.append(self._format_vector(A_u_mas_v))
             lines.append("")
+            lines.extend(self._detalle_mat_vec(A, u_mas_v, "A(u+v)"))
+            lines.append("")
+            lines.append("Paso 3: calcular Au y Av por separado")
             lines.append("Au =")
             lines.append(self._format_vector(Au))
             lines.append("Av =")
             lines.append(self._format_vector(Av))
+            lines.extend(self._detalle_mat_vec(A, u, "Au"))
+            lines.extend(self._detalle_mat_vec(A, v, "Av"))
+            lines.append("")
+            lines.append("Paso 4: sumar Au + Av (entrada a entrada)")
             lines.append("Au + Av =")
             lines.append(self._format_vector(Au_mas_Av))
+            lines.append("")
+            lines.extend(self._detalle_combinacion(Au, Av, 1, 1, "Au+Av"))
 
             self._write("\n".join(lines) + "\n")
             self._append("Conclusión: A(u+v) y Au+Av " + ("COINCIDEN ✔" if iguales else "NO coinciden ✖"),
@@ -282,18 +315,29 @@ class OperacionesMatricesApp:
             lines.append("== Linealidad con escalares: A(au+bv) frente a aAu + bAv ==")
             lines.append(f"a = {self._fmt(a)},  b = {self._fmt(b)}")
             lines.append("")
+            lines.append("Paso 1: combinación au + bv (entrada a entrada)")
             lines.append("au + bv =")
             lines.append(self._format_vector(au_bv))
             lines.append("")
+            lines.extend(self._detalle_combinacion(u, v, a, b, "au+bv"))
+            lines.append("")
+            lines.append("Paso 2: aplicar A a (au+bv) (producto fila x columna)")
             lines.append("A(au+bv) =")
             lines.append(self._format_vector(A_au_bv))
             lines.append("")
+            lines.extend(self._detalle_mat_vec(A, au_bv, "A(au+bv)"))
+            lines.append("")
+            lines.append("Paso 3: calcular Au y Av y luego combinarlos con a y b")
             lines.append("Au =")
             lines.append(self._format_vector(Au))
             lines.append("Av =")
             lines.append(self._format_vector(Av))
+            lines.extend(self._detalle_mat_vec(A, u, "Au"))
+            lines.extend(self._detalle_mat_vec(A, v, "Av"))
+            lines.append("")
             lines.append("aAu + bAv =")
             lines.append(self._format_vector(aAu_bAv))
+            lines.extend(self._detalle_combinacion(Au, Av, a, b, "aAu+bAv"))
 
             self._write("\n".join(lines) + "\n")
             self._append("Conclusión: A(au+bv) y aAu+bAv " + ("COINCIDEN ✔" if iguales else "NO coinciden ✖"),
