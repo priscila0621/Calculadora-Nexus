@@ -1020,6 +1020,18 @@ class TranspuestaMatrizWindow(_BaseMatrixWindow):
             size_row.addWidget(btn_b_create)
             adv_layout.addLayout(size_row)
 
+            # Entrada libre de expresiones avanzadas
+            expr_row = QHBoxLayout()
+            expr_row.setContentsMargins(0, 0, 0, 0)
+            expr_row.addWidget(QLabel("Expresión:"))
+            self.expr_edit = QLineEdit()
+            self.expr_edit.setPlaceholderText("Ej: A+B, (Ax)^T, x^T A, x x^T, A^T B, (Ax)^T")
+            expr_row.addWidget(self.expr_edit)
+            btn_eval = QPushButton("Evaluar expresión")
+            btn_eval.clicked.connect(self._eval_expression)
+            expr_row.addWidget(btn_eval)
+            adv_layout.addLayout(expr_row)
+
             self.adv_panel.setVisible(False)
             self.actions_layout.addWidget(self.adv_panel)
         except Exception:
@@ -1391,6 +1403,169 @@ class TranspuestaMatrizWindow(_BaseMatrixWindow):
                 self.grid_b.addWidget(e, i, j)
                 row.append(e)
             self.vector_entries.append(row)
+
+    # --- Evaluador de expresiones avanzado ---
+    def _read_B(self):
+        if not getattr(self, 'vector_entries', None):
+            return None
+        rows = len(self.vector_entries)
+        cols = len(self.vector_entries[0]) if rows and isinstance(self.vector_entries[0], list) else 1
+        B = []
+        for i in range(rows):
+            row = []
+            for j in range(cols):
+                row.append(_parse_fraction(self.vector_entries[i][j].text()))
+            B.append(row)
+        return B
+
+    def _transpose(self, M):
+        if M is None:
+            return None
+        r = len(M); c = len(M[0]) if r else 0
+        return [[M[i][j] for i in range(r)] for j in range(c)]
+
+    def _mul(self, A, B):
+        if A is None or B is None:
+            raise ValueError("Operación requiere dos operandos")
+        ra = len(A); ca = len(A[0]) if ra else 0
+        rb = len(B); cb = len(B[0]) if rb else 0
+        if ca != rb:
+            raise ValueError(f"Operación no definida: {ca} columnas != {rb} filas")
+        R = [[Fraction(0) for _ in range(cb)] for __ in range(ra)]
+        for i in range(ra):
+            for j in range(cb):
+                s = Fraction(0)
+                for k in range(ca):
+                    s += A[i][k] * B[k][j]
+                R[i][j] = s
+        return R
+
+    def _preprocess_expr(self, s: str) -> str:
+        s = (s or "").replace(' ', '')
+        out = ''
+        prev = ''
+        for ch in s:
+            if prev and ((prev in 'ABx)') and (ch in 'ABx(')):
+                out += '*'
+            out += ch
+            prev = ch
+        return out
+
+    def _tokenize(self, s: str):
+        tokens = []
+        i = 0
+        while i < len(s):
+            if s[i].isalpha():
+                if s[i] in ('A','B','x'):
+                    if i+2 <= len(s)-1 and s[i+1] == '^' and s[i+2] == 'T':
+                        tokens.append(s[i]); tokens.append('^T'); i += 3; continue
+                    tokens.append(s[i]); i += 1; continue
+                else:
+                    raise ValueError('Token desconocido: '+s[i])
+            if s.startswith('^T', i):
+                tokens.append('^T'); i += 2; continue
+            if s[i] in '+-*()':
+                tokens.append(s[i]); i += 1; continue
+            if s[i].isspace():
+                i += 1; continue
+            raise ValueError('Caracter invalido: '+s[i])
+        return tokens
+
+    def _to_postfix(self, tokens):
+        out = []; ops = []
+        prec = {'+':1,'-':1,'*':2}
+        for t in tokens:
+            if t in ('A','B','x'):
+                out.append(t)
+            elif t == '^T':
+                out.append('^T')
+            elif t in prec:
+                while ops and ops[-1] in prec and prec[ops[-1]] >= prec[t]:
+                    out.append(ops.pop())
+                ops.append(t)
+            elif t == '(':
+                ops.append(t)
+            elif t == ')':
+                while ops and ops[-1] != '(':
+                    out.append(ops.pop())
+                if not ops: raise ValueError('Paréntesis desbalanceados')
+                ops.pop()
+            else:
+                raise ValueError('Token inesperado: '+str(t))
+        while ops:
+            if ops[-1] in '()': raise ValueError('Paréntesis desbalanceados')
+            out.append(ops.pop())
+        return out
+
+    def _eval_postfix(self, postfix, A, B):
+        stack = []
+        pasos = []
+        for t in postfix:
+            if t == 'A':
+                stack.append(A); pasos.append('Push A')
+            elif t == 'B':
+                if B is None: raise ValueError('B no definida')
+                stack.append(B); pasos.append('Push B')
+            elif t == 'x':
+                if B is None: raise ValueError('x (B) no definida')
+                # x representa B cuando B tiene una sola columna
+                if len(B[0]) != 1:
+                    raise ValueError('x requiere que B sea un vector columna (1 columna)')
+                stack.append(B); pasos.append('Push x (B)')
+            elif t == '^T':
+                if not stack: raise ValueError('^T sin operando')
+                v = stack.pop(); r = self._transpose(v); stack.append(r); pasos.append('Aplicar transpuesta')
+            elif t in ('+','-','*'):
+                if len(stack) < 2: raise ValueError('Operandos insuficientes')
+                right = stack.pop(); left = stack.pop()
+                if t == '+': r = [[left[i][j] + right[i][j] for j in range(len(left[0]))] for i in range(len(left))]
+                elif t == '-': r = [[left[i][j] - right[i][j] for j in range(len(left[0]))] for i in range(len(left))]
+                else: r = self._mul(left, right)
+                stack.append(r); pasos.append('Operador '+t)
+            else:
+                raise ValueError('Token desconocido: '+str(t))
+        if len(stack) != 1: raise ValueError('Expresión inválida; pila final: '+str(len(stack)))
+        return stack[0], pasos
+
+    def _eval_expression(self):
+        expr = (getattr(self, 'expr_edit', None).text() if getattr(self, 'expr_edit', None) else '').strip()
+        if not expr:
+            QMessageBox.information(self, 'Ingresar expresión', 'Ingrese una expresión a evaluar.')
+            return
+        try:
+            A = self._leer()
+        except Exception as exc:
+            QMessageBox.warning(self, 'Error', 'Error leyendo A: '+str(exc)); return
+        try:
+            B = self._read_B()
+        except Exception as exc:
+            QMessageBox.warning(self, 'Error', 'Error leyendo B: '+str(exc)); return
+        try:
+            s = self._preprocess_expr(expr)
+            tokens = self._tokenize(s)
+            postfix = self._to_postfix(tokens)
+            R, pasos = self._eval_postfix(postfix, A, B)
+        except Exception as exc:
+            QMessageBox.warning(self, 'Error', str(exc)); return
+
+        # mostrar resultado en la zona de resultados
+        self.result_box.clear()
+        for line in pasos:
+            self.result_box.insertPlainText(line + "\n")
+        # mostrar matriz resultante
+        try:
+            # limpiar y mostrar en resultado expandido
+            for i in reversed(range(self.result_matrix_layout.count())):
+                w = self.result_matrix_layout.itemAt(i).widget()
+                if w: w.setParent(None)
+            self.result_matrix_layout.addWidget(_matrix_widget(self, R))
+            self._last_shown_matrix = R
+            self._last_shown_title = f"Expresión: {expr}"
+            self._last_shown_steps = "\n".join(pasos)
+            try: self.btn_hist_save.setEnabled(True)
+            except Exception: pass
+        except Exception:
+            pass
 
     # Historial helpers
     def _history_save(self):
