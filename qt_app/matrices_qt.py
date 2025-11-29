@@ -1540,34 +1540,72 @@ class TranspuestaMatrizWindow(_BaseMatrixWindow):
         return out
 
     def _eval_postfix(self, postfix, A, B):
-        stack = []
+        # Use named operands on the stack so we can generate readable step descriptions.
+        stack = []  # elements are tuples (name, matrix)
         pasos = []
+        temp_idx = 1
+
+        def mat_to_lines(M):
+            return [" ".join(str(v) for v in row) for row in M]
+
         for t in postfix:
             if t == 'A':
-                stack.append(A); pasos.append('Push A')
+                stack.append(('A', A))
             elif t == 'B':
                 if B is None: raise ValueError('B no definida')
-                stack.append(B); pasos.append('Push B')
+                stack.append(('B', B))
             elif t == 'x':
                 if B is None: raise ValueError('x (B) no definida')
-                # x representa B cuando B tiene una sola columna
                 if len(B[0]) != 1:
                     raise ValueError('x requiere que B sea un vector columna (1 columna)')
-                stack.append(B); pasos.append('Push x (B)')
+                stack.append(('x', B))
             elif t == '^T':
                 if not stack: raise ValueError('^T sin operando')
-                v = stack.pop(); r = self._transpose(v); stack.append(r); pasos.append('Aplicar transpuesta')
+                name, mat = stack.pop()
+                R = self._transpose(mat)
+                new_name = f"C{temp_idx}"
+                temp_idx += 1
+                pasos.append(f"Paso: Transponer {name} -> {new_name}")
+                pasos.extend(mat_to_lines(R))
+                stack.append((new_name, R))
             elif t in ('+','-','*'):
                 if len(stack) < 2: raise ValueError('Operandos insuficientes')
-                right = stack.pop(); left = stack.pop()
-                if t == '+': r = [[left[i][j] + right[i][j] for j in range(len(left[0]))] for i in range(len(left))]
-                elif t == '-': r = [[left[i][j] - right[i][j] for j in range(len(left[0]))] for i in range(len(left))]
-                else: r = self._mul(left, right)
-                stack.append(r); pasos.append('Operador '+t)
+                right_name, right = stack.pop()
+                left_name, left = stack.pop()
+                new_name = f"C{temp_idx}"
+                temp_idx += 1
+                if t == '+':
+                    R = [[left[i][j] + right[i][j] for j in range(len(left[0]))] for i in range(len(left))]
+                    pasos.append(f"Paso: Suma {left_name} + {right_name} -> {new_name}")
+                    pasos.append("Suma elemento a elemento:")
+                    for i in range(len(R)):
+                        row_expr = "   ".join(f"{left[i][j]}+{right[i][j]}" for j in range(len(R[0])))
+                        pasos.append(row_expr)
+                    pasos.append("Resultado intermedio {} = {}:" .format(new_name, ''))
+                    pasos.extend(mat_to_lines(R))
+                elif t == '-':
+                    R = [[left[i][j] - right[i][j] for j in range(len(left[0]))] for i in range(len(left))]
+                    pasos.append(f"Paso: Resta {left_name} - {right_name} -> {new_name}")
+                    pasos.append("Resta elemento a elemento:")
+                    for i in range(len(R)):
+                        row_expr = "   ".join(f"{left[i][j]}-{right[i][j]}" for j in range(len(R[0])))
+                        pasos.append(row_expr)
+                    pasos.append("Resultado intermedio {} = {}:" .format(new_name, ''))
+                    pasos.extend(mat_to_lines(R))
+                else:
+                    R = self._mul(left, right)
+                    pasos.append(f"Paso: Multiplicación {left_name} · {right_name} -> {new_name}")
+                    pasos.append("Calcular entradas como suma de productos:")
+                    for i in range(len(R)):
+                        for j in range(len(R[0])):
+                            terms = [f"{left[i][k]}·{right[k][j]}" for k in range(len(left[0]))]
+                            pasos.append(f"R[{i+1},{j+1}] = " + " + ".join(terms) + f" = {R[i][j]}")
+                stack.append((new_name, R))
             else:
                 raise ValueError('Token desconocido: '+str(t))
         if len(stack) != 1: raise ValueError('Expresión inválida; pila final: '+str(len(stack)))
-        return stack[0], pasos
+        final_name, final_mat = stack[0]
+        return final_mat, pasos
 
     def _eval_expression(self):
         pass
