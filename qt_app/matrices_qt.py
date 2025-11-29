@@ -1160,7 +1160,10 @@ class TranspuestaMatrizWindow(_BaseMatrixWindow):
                 # operaciones avanzadas: leer B
                 B = read_B()
                 # Si el usuario seleccionó "Expresión personalizada", evaluarla aquí
-                if getattr(self, 'rb_custom', None) and self.rb_custom.isChecked():
+                # Ejecutar expresión personalizada si el radio está seleccionado
+                # o si el campo de expresión contiene texto (entrada directa).
+                expr_text_present = (getattr(self, 'expr_edit', None) and (self.expr_edit.text() or '').strip())
+                if (getattr(self, 'rb_custom', None) and self.rb_custom.isChecked()) or expr_text_present:
                     title = f"Expresión personalizada"
                     expr = (getattr(self, 'expr_edit', None).text() if getattr(self, 'expr_edit', None) else '').strip()
                     if not expr:
@@ -1519,9 +1522,14 @@ class TranspuestaMatrizWindow(_BaseMatrixWindow):
         s = (s or "").replace(' ', '')
         out = ''
         prev = ''
+        # Nota: considerar 'T' (transpuesta) como posible token previo para
+        # insertar multiplicación implícita entre por ejemplo "A^T" y "x" => "A^T*x"
         for ch in s:
-            if prev and ((prev in 'ABx)') and (ch in 'ABx(')):
-                out += '*'
+            if prev:
+                prev_sym = prev
+                # si prev es parte de '^T' puede aparecer como 'T'
+                if prev_sym in 'ABx)Tt' and (ch in 'ABx('):
+                    out += '*'
             out += ch
             prev = ch
         return out
