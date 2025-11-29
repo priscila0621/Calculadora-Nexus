@@ -1178,11 +1178,21 @@ class TranspuestaMatrizWindow(_BaseMatrixWindow):
                             postfix = self._to_postfix(tokens)
                             R, eval_steps = self._eval_postfix(postfix, A, B)
                             result_matrix = R
+                            # mostrar matriz destacada
+                            try:
+                                self._show_matrix_result(R, title=f"Expresión: {expr}")
+                            except Exception:
+                                pass
                             for st in eval_steps:
                                 steps.append("   " + st)
                             steps.append("6) Resultado final:")
                             for ln in mat_lines(R): steps.append("     " + ln)
                         except Exception as e:
+                            # mostrar alerta al usuario
+                            try:
+                                QMessageBox.warning(self, "Operación indefinida", str(e))
+                            except Exception:
+                                pass
                             steps.append("   Error: " + str(e))
                             steps.append("6) Resultado final:")
                             steps.append("   Operación indefinida.")
@@ -1382,6 +1392,29 @@ class TranspuestaMatrizWindow(_BaseMatrixWindow):
                     raise ValueError("Operación no soportada")
 
             # mostrar resultado y pasos
+            # Mostrar la matriz destacada si existe; si no existe, informar al usuario con un popup
+            try:
+                if result_matrix is not None:
+                    try:
+                        self._show_matrix_result(result_matrix, title=title or "Resultado")
+                    except Exception:
+                        pass
+                else:
+                    # intentar extraer una línea de razón desde los pasos
+                    reason = None
+                    for ln in steps:
+                        if "NO está definida" in ln or "Operación indefinida" in ln or "NO está definida porque" in ln:
+                            reason = ln
+                            break
+                    if not reason and steps:
+                        # fallback: tomar las últimas líneas de pasos
+                        reason = "\n".join(steps[-3:])
+                    try:
+                        QMessageBox.warning(self, "Operación indefinida", reason or "La operación no está definida.")
+                    except Exception:
+                        pass
+            except Exception:
+                pass
             self.result_box.clear()
             for idx, s in enumerate(steps, start=1 if steps and steps[0].startswith('1)') else 1):
                 self.result_box.insertPlainText(s + "\n")

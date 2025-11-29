@@ -260,6 +260,15 @@ class TranspuestaMatrizApp:
         return mat
 
     def _calcular_transpuesta(self):
+        # Si el usuario escribió una expresión avanzada, evaluarla en lugar
+        # de solo calcular la transpuesta.
+        expr_text = (self.expr_entry.get() if getattr(self, 'expr_entry', None) else '').strip()
+        if expr_text:
+            # delegar a evaluador de expresiones (ya maneja errores y muestra resultado)
+            self._evaluar_expresion()
+            return
+
+        # limpiar frame de resultados
         for w in self.result_frame.winfo_children():
             w.destroy()
         try:
@@ -271,20 +280,21 @@ class TranspuestaMatrizApp:
         f = len(A)
         c = len(A[0]) if f else 0
 
-        # T tendrÃ¡ tamaÃ±o c x f
+        # Panel destacado para la matriz resultante
+        highlight = tk.Frame(self.result_frame, bg="#fff1f3", bd=2, relief="solid")
+        highlight.pack(fill="x", pady=(4, 8))
         res_title = tk.Label(
-            self.result_frame,
-            text="Resultado (Transpuesta)",
-            font=("Segoe UI", 16, "bold"),
-            bg=self.bg,
-            fg="#b91c1c",
+            highlight,
+            text="Matriz resultante (Transpuesta)",
+            font=("Segoe UI", 14, "bold"),
+            bg="#fff1f3",
+            fg="#7f1d1d",
         )
-        res_title.pack(pady=(4, 6))
+        res_title.pack(pady=(6, 2))
+        grid = tk.Frame(highlight, bg="#fff1f3")
+        grid.pack(padx=8, pady=(0, 8))
 
-        grid = tk.Frame(self.result_frame, bg=self.bg)
-        grid.pack()
-
-        # preparar grilla de etiquetas para el resultado
+        # preparar grilla de etiquetas para el resultado (c x f)
         self.result_labels = []
         for i in range(c):
             row_lbls = []
@@ -292,21 +302,21 @@ class TranspuestaMatrizApp:
                 lbl = tk.Label(
                     grid,
                     text="",
-                    bg=self.bg,
+                    bg="#ffffff",
                     fg="#111",
-                    font=("Segoe UI", 11),
-                    relief="groove",
+                    font=("Segoe UI", 12, "bold"),
+                    relief="ridge",
                     width=10,
                     anchor="center",
                 )
-                lbl.grid(row=i, column=j, padx=4, pady=4, sticky="nsew")
+                lbl.grid(row=i, column=j, padx=6, pady=6, sticky="nsew")
                 row_lbls.append(lbl)
             self.result_labels.append(row_lbls)
 
-        # secciÃ³n de pasos
+        # secciÃ³n de pasos (procedimiento)
         pasos_title = tk.Label(
             self.result_frame,
-            text="Pasos detallados",
+            text="Procedimiento paso a paso",
             font=("Segoe UI", 14, "bold"),
             bg=self.bg,
             fg="#b91c1c",
@@ -674,22 +684,30 @@ class TranspuestaMatrizApp:
             postfix = self._to_postfix(tokens)
             R, pasos = self._eval_postfix(postfix, A, B, x)
         except Exception as e:
-            messagebox.showerror('Error', str(e))
+            msg = str(e)
+            # detectar errores por dimensiones o imposibilidad de la operación
+            if any(k in msg.lower() for k in ("no definida", "incompat", "operandos insuficientes", "sin operando", "requiere")):
+                messagebox.showwarning("Operación indefinida", f"La operación no está definida:\n{msg}")
+            else:
+                messagebox.showerror('Error', msg)
             return
 
-        # mostrar resultado
+        # Mostrar resultado en panel destacado (fuera del bloque de pasos)
         r = len(R)
         c = len(R[0]) if r else 0
+        # panel destacado
+        highlight = tk.Frame(self.result_frame, bg="#fff1f3", bd=2, relief="solid")
+        highlight.pack(fill="x", pady=(4, 8))
         res_title = tk.Label(
-            self.result_frame,
-            text=f"Resultado (ExpresiÃ³n: {expr_raw})",
-            font=("Segoe UI", 16, "bold"),
-            bg=self.bg,
-            fg="#b91c1c",
+            highlight,
+            text=f"Matriz resultante — Expresión: {expr_raw}",
+            font=("Segoe UI", 14, "bold"),
+            bg="#fff1f3",
+            fg="#7f1d1d",
         )
-        res_title.pack(pady=(4, 6))
-        grid = tk.Frame(self.result_frame, bg=self.bg)
-        grid.pack()
+        res_title.pack(pady=(6, 2))
+        grid = tk.Frame(highlight, bg="#fff1f3")
+        grid.pack(padx=8, pady=(0, 8))
         self.result_labels = []
         for i in range(r):
             row_lbls = []
@@ -697,33 +715,36 @@ class TranspuestaMatrizApp:
                 lbl = tk.Label(
                     grid,
                     text=str(R[i][j]),
-                    bg=self.bg,
+                    bg="#ffffff",
                     fg="#111",
-                    font=("Segoe UI", 11),
-                    relief="groove",
+                    font=("Segoe UI", 12, "bold"),
+                    relief="ridge",
                     width=12,
                     anchor="center",
                 )
-                lbl.grid(row=i, column=j, padx=4, pady=4, sticky="nsew")
+                lbl.grid(row=i, column=j, padx=6, pady=6, sticky="nsew")
                 row_lbls.append(lbl)
             self.result_labels.append(row_lbls)
 
+        # secciÃ³n de pasos (procedimiento)
         pasos_title = tk.Label(
             self.result_frame,
-            text="Pasos (resumen)",
+            text="Procedimiento paso a paso",
             font=("Segoe UI", 14, "bold"),
             bg=self.bg,
             fg="#b91c1c",
         )
         pasos_title.pack(pady=(10, 4))
+
         pasos_frame = tk.Frame(self.result_frame, bg=self.bg)
         pasos_frame.pack(fill="both", expand=True)
         scrollbar = ttk.Scrollbar(pasos_frame)
         scrollbar.pack(side="right", fill="y")
-        self.pasos_text = tk.Text(pasos_frame, height=8, yscrollcommand=scrollbar.set, bg="white")
+        self.pasos_text = tk.Text(pasos_frame, height=10, yscrollcommand=scrollbar.set, bg="white")
         self.pasos_text.pack(side="left", fill="both", expand=True)
         scrollbar.config(command=self.pasos_text.yview)
-        self.pasos_text.insert('1.0', '\n'.join(pasos))
+        # insertar pasos con saltos de lÃ­nea ya legibles
+        self.pasos_text.insert('1.0', '\n\n'.join(pasos))
 
     def _volver_al_inicio(self):
         try:
