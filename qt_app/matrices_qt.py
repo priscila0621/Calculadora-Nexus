@@ -994,10 +994,20 @@ class TranspuestaMatrizWindow(_BaseMatrixWindow):
             self.rb_xTA_T = QRadioButton("x^T A^T")
             self.rb_xxT = QRadioButton("x x^T")
             self.rb_xTx = QRadioButton("x^T x (producto escalar)")
+            self.rb_custom = QRadioButton("Expresión personalizada")
             self.rb_transpose.setChecked(True)
-            for rb in (self.rb_transpose, self.rb_atx, self.rb_axT, self.rb_xTA_T, self.rb_xxT, self.rb_xTx):
+            for rb in (self.rb_transpose, self.rb_atx, self.rb_axT, self.rb_xTA_T, self.rb_xxT, self.rb_xTx, self.rb_custom):
                 ops_row.addWidget(rb)
             adv_layout.addLayout(ops_row)
+
+            # Entrada libre de expresiones (debajo de las radios)
+            expr_row_top = QHBoxLayout()
+            expr_row_top.setContentsMargins(0, 0, 0, 0)
+            expr_row_top.addWidget(QLabel("Expresión:"))
+            self.expr_edit = QLineEdit()
+            self.expr_edit.setPlaceholderText("Ej: A+B, (Ax)^T, x^T A, x x^T, A^T B, (Ax)^T")
+            expr_row_top.addWidget(self.expr_edit)
+            adv_layout.addLayout(expr_row_top)
 
             # Área para ingresar vector/matriz B
             self.grid_b = QGridLayout()
@@ -1020,17 +1030,8 @@ class TranspuestaMatrizWindow(_BaseMatrixWindow):
             size_row.addWidget(btn_b_create)
             adv_layout.addLayout(size_row)
 
-            # Entrada libre de expresiones avanzadas
-            expr_row = QHBoxLayout()
-            expr_row.setContentsMargins(0, 0, 0, 0)
-            expr_row.addWidget(QLabel("Expresión:"))
-            self.expr_edit = QLineEdit()
-            self.expr_edit.setPlaceholderText("Ej: A+B, (Ax)^T, x^T A, x x^T, A^T B, (Ax)^T")
-            expr_row.addWidget(self.expr_edit)
-            btn_eval = QPushButton("Evaluar expresión")
-            btn_eval.clicked.connect(self._eval_expression)
-            expr_row.addWidget(btn_eval)
-            adv_layout.addLayout(expr_row)
+            self.adv_panel.setVisible(False)
+            self.actions_layout.addWidget(self.adv_panel)
 
             self.adv_panel.setVisible(False)
             self.actions_layout.addWidget(self.adv_panel)
@@ -1158,6 +1159,47 @@ class TranspuestaMatrizWindow(_BaseMatrixWindow):
             else:
                 # operaciones avanzadas: leer B
                 B = read_B()
+                # Si el usuario seleccionó "Expresión personalizada", evaluarla aquí
+                if getattr(self, 'rb_custom', None) and self.rb_custom.isChecked():
+                    title = f"Expresión personalizada"
+                    expr = (getattr(self, 'expr_edit', None).text() if getattr(self, 'expr_edit', None) else '').strip()
+                    if not expr:
+                        result_matrix = None
+                        show_inputs()
+                        steps.append("3) No hay expresión ingresada.")
+                        steps.append("6) Resultado final:")
+                        steps.append("   Operación indefinida.")
+                    else:
+                        show_inputs()
+                        steps.append("3) Evaluación de la expresión ingresada:")
+                        try:
+                            s = self._preprocess_expr(expr)
+                            tokens = self._tokenize(s)
+                            postfix = self._to_postfix(tokens)
+                            R, eval_steps = self._eval_postfix(postfix, A, B)
+                            result_matrix = R
+                            for st in eval_steps:
+                                steps.append("   " + st)
+                            steps.append("6) Resultado final:")
+                            for ln in mat_lines(R): steps.append("     " + ln)
+                        except Exception as e:
+                            steps.append("   Error: " + str(e))
+                            steps.append("6) Resultado final:")
+                            steps.append("   Operación indefinida.")
+                            result_matrix = None
+                    # luego continuar (no ejecutar otras ramas)
+                    self.result_box.clear()
+                    for idx, s in enumerate(steps, start=1 if steps and steps[0].startswith('1)') else 1):
+                        self.result_box.insertPlainText(s + "\n")
+                    try:
+                        self._last_shown_matrix = result_matrix
+                        self._last_shown_title = title
+                        self._last_shown_steps = "\n".join(steps)
+                        try: self.btn_hist_save.setEnabled(True)
+                        except Exception: pass
+                    except Exception:
+                        pass
+                    return
                 # preparar nombres
                 if self.rb_transpose.isChecked():
                     title = "A^T"
@@ -1528,44 +1570,7 @@ class TranspuestaMatrizWindow(_BaseMatrixWindow):
         return stack[0], pasos
 
     def _eval_expression(self):
-        expr = (getattr(self, 'expr_edit', None).text() if getattr(self, 'expr_edit', None) else '').strip()
-        if not expr:
-            QMessageBox.information(self, 'Ingresar expresión', 'Ingrese una expresión a evaluar.')
-            return
-        try:
-            A = self._leer()
-        except Exception as exc:
-            QMessageBox.warning(self, 'Error', 'Error leyendo A: '+str(exc)); return
-        try:
-            B = self._read_B()
-        except Exception as exc:
-            QMessageBox.warning(self, 'Error', 'Error leyendo B: '+str(exc)); return
-        try:
-            s = self._preprocess_expr(expr)
-            tokens = self._tokenize(s)
-            postfix = self._to_postfix(tokens)
-            R, pasos = self._eval_postfix(postfix, A, B)
-        except Exception as exc:
-            QMessageBox.warning(self, 'Error', str(exc)); return
-
-        # mostrar resultado en la zona de resultados
-        self.result_box.clear()
-        for line in pasos:
-            self.result_box.insertPlainText(line + "\n")
-        # mostrar matriz resultante
-        try:
-            # limpiar y mostrar en resultado expandido
-            for i in reversed(range(self.result_matrix_layout.count())):
-                w = self.result_matrix_layout.itemAt(i).widget()
-                if w: w.setParent(None)
-            self.result_matrix_layout.addWidget(_matrix_widget(self, R))
-            self._last_shown_matrix = R
-            self._last_shown_title = f"Expresión: {expr}"
-            self._last_shown_steps = "\n".join(pasos)
-            try: self.btn_hist_save.setEnabled(True)
-            except Exception: pass
-        except Exception:
-            pass
+        pass
 
     # Historial helpers
     def _history_save(self):
