@@ -1190,7 +1190,7 @@ class TranspuestaMatrizWindow(_BaseMatrixWindow):
                         except Exception as e:
                             # mostrar alerta al usuario
                             try:
-                                QMessageBox.warning(self, "Operación indefinida", str(e))
+                                QMessageBox.warning(self, "Operación indefinida", self._format_error_message(e))
                             except Exception:
                                 pass
                             steps.append("   Error: " + str(e))
@@ -1410,7 +1410,7 @@ class TranspuestaMatrizWindow(_BaseMatrixWindow):
                         # fallback: tomar las últimas líneas de pasos
                         reason = "\n".join(steps[-3:])
                     try:
-                        QMessageBox.warning(self, "Operación indefinida", reason or "La operación no está definida.")
+                        QMessageBox.warning(self, "Operación indefinida", self._format_error_message(reason or "La operación no está definida."))
                     except Exception:
                         pass
             except Exception:
@@ -1639,6 +1639,28 @@ class TranspuestaMatrizWindow(_BaseMatrixWindow):
         if len(stack) != 1: raise ValueError('Expresión inválida; pila final: '+str(len(stack)))
         final_name, final_mat = stack[0]
         return final_mat, pasos
+
+    def _format_error_message(self, msg) -> str:
+        """Convertir mensajes técnicos a un texto claro en español."""
+        try:
+            s = str(msg or "").strip()
+        except Exception:
+            return "Operación indefinida."
+        sl = s.lower()
+        if "list index out of range" in sl:
+            return "Índice fuera de rango: probablemente las dimensiones de las matrices no coinciden o la expresión accede a una posición inexistente. Revisa las dimensiones y la expresión."
+        if "columnas" in sl and "filas" in sl:
+            return "Dimensiones incompatibles: las columnas de la primera matriz no coinciden con las filas de la segunda. Ajusta las dimensiones."
+        if "b no definida" in sl or "b is none" in sl:
+            return "La matriz/vector B no está definida. Crea B antes de usarla en la expresión."
+        if "x requiere" in sl or "x (b) no definida" in sl or "x (b)" in sl:
+            return "Vector x no definido o B no es un vector columna. Asegura que B tenga una sola columna para usarlo como vector x."
+        if "operandos insuficientes" in sl or "insuficientes" in sl:
+            return "Expresión inválida: faltan operandos para algún operador. Revisa la sintaxis de la expresión."
+        if "paréntesis" in sl or "desbalance" in sl:
+            return "Expresión inválida: paréntesis desbalanceados o mal colocados. Revisa los paréntesis."
+        # fallback: devolver mensaje con prefijo en español
+        return "Operación indefinida: " + s
 
     def _eval_expression(self):
         pass
