@@ -546,7 +546,9 @@ class GaussJordanWindow(QMainWindow):
             self.result.insertPlainText("Esto ocurre cuando las ecuaciones representan planos que nunca se tocan -> son paralelos.\n")
             return
         if tipo == "determinado":
-            self.result.insertPlainText("El sistema tiene solución única:\n\n")
+            self.result.insertPlainText("El sistema tiene solucion unica:\n\n")
+            self.result.insertPlainText("Un sistema tiene solucion unica cuando todas sus ecuaciones se cruzan en un solo punto.\n")
+            self.result.insertPlainText("Ese punto es el valor exacto de cada variable que cumple todas las ecuaciones al mismo tiempo.\n\n")
         elif tipo == "indeterminado":
             self.result.insertPlainText("El sistema tiene infinitas soluciones:\n\n")
         for i, val in enumerate(soluciones):
