@@ -762,6 +762,11 @@ class RestaMatricesWindow(SumaMatricesWindow):
         self.result_box.clear()
         try:
             self._show_matrix_result(result, title="Matriz resultante")
+            self._last_sum_result = result
+            try:
+                self.trans_inv_btn.setEnabled(True)
+            except Exception:
+                pass
         except Exception:
             pass
         if logs:
