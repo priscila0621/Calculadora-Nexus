@@ -541,7 +541,9 @@ class GaussJordanWindow(QMainWindow):
             return
         soluciones, tipo, analisis = _extraer_soluciones(self.matriz_final)
         if tipo == "incompatible":
-            self.result.insertPlainText("El sistema es inconsistente: aparece una fila del tipo 0 = b con b≠0\n")
+            self.result.insertPlainText("El sistema es inconsistente: aparece una fila del tipo 0 = b con b != 0\n")
+            self.result.insertPlainText("Un sistema es inconsistente cuando no tiene solucion.\n")
+            self.result.insertPlainText("Esto ocurre cuando las ecuaciones representan planos que nunca se tocan -> son paralelos.\n")
             return
         if tipo == "determinado":
             self.result.insertPlainText("El sistema tiene solución única:\n\n")
@@ -793,6 +795,10 @@ def imprimir_vectores_con_x_igual(editor: QTextEdit, lines):
             editor.insertPlainText(" " * x_pos + x_eq + " " + l + "\n")
         else:
             editor.insertPlainText(" " * (x_pos + len(x_eq) + 1) + l + "\n")
+
+
+
+
 
 
 
