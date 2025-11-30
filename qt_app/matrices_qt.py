@@ -1175,8 +1175,8 @@ class TranspuestaMatrizWindow(_BaseMatrixWindow):
                 # o si el campo de expresión contiene texto (entrada directa).
                 expr_text_present = (getattr(self, 'expr_edit', None) and (self.expr_edit.text() or '').strip())
                 if (getattr(self, 'rb_custom', None) and self.rb_custom.isChecked()) or expr_text_present:
-                    title = f"Expresión personalizada"
                     expr = (getattr(self, 'expr_edit', None).text() if getattr(self, 'expr_edit', None) else '').strip()
+                    title = expr if expr else "Expresión personalizada"
                     if not expr:
                         result_matrix = None
                         show_inputs()
@@ -1185,7 +1185,7 @@ class TranspuestaMatrizWindow(_BaseMatrixWindow):
                         steps.append("   Operación indefinida.")
                     else:
                         show_inputs()
-                        steps.append("3) Evaluación de la expresión ingresada:")
+                        steps.append(f"3) Evaluación de la expresión ingresada: {expr}")
                         try:
                             s = self._preprocess_expr(expr)
                             tokens = self._tokenize(s)
