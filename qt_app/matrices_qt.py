@@ -234,13 +234,15 @@ class _BaseMatrixWindow(QMainWindow):
             self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
     def _update_input_min_height(self, rows: int):
-        """Ajusta la altura mínima del área de entrada según la cantidad de filas."""
-        approx = rows * 56 + 140  # altura estimada por fila + padding compacto
-        # Pensado para ver hasta ~10 filas sin dejar vacíos grandes
-        target = max(320, min(750, approx))
-        self.scroll.setMinimumHeight(target)
+        """Ajusta la altura del área de entrada según filas evitando huecos vacíos."""
+        row_px = max(34, self.f_edit.sizeHint().height() + 10)
+        content_px = rows * row_px
+        min_target = max(120, min(720, content_px + 32))
+        max_target = min(780, content_px + 56)
+        self.scroll.setMinimumHeight(min_target)
+        self.scroll.setMaximumHeight(max_target if max_target >= min_target else min_target)
         try:
-            self.scrollw.setMinimumHeight(max(0, target - 120))
+            self.scrollw.setMinimumHeight(max(0, content_px + 12))
         except Exception:
             pass
 
@@ -450,6 +452,7 @@ class SumaMatricesWindow(_BaseMatrixWindow):
             if w: w.setParent(None)
         filas = int(self.f_edit.text()); cols = int(self.c_edit.text()); n = int(self.num_edit.text())
         self._update_input_scroll_from_cols(cols)
+        self._update_input_min_height(filas)
         self._ensure_scalar_controls(n)
         self.entries = []
         for m in range(n):
