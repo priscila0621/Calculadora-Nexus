@@ -2,7 +2,7 @@
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QScrollArea, QGridLayout, QLineEdit, QTextEdit, QMessageBox, QFrame,
     QRadioButton, QCheckBox, QToolButton, QMenu, QSizePolicy, QDialog,
-    QListWidget, QListWidgetItem
+    QListWidget, QListWidgetItem, QTabWidget
 )
 from PySide6.QtCore import Qt, QSize
 from fractions import Fraction
@@ -400,6 +400,25 @@ class SumaMatricesWindow(_BaseMatrixWindow):
         except Exception:
             self._ensure_scalar_controls(0)
 
+        # Botón para ver transpuesta e inversa del resultado (aparece debajo de la matriz resultante)
+        self.trans_inv_btn = QPushButton("Ver transpuesta e inversa")
+        self.trans_inv_btn.setEnabled(False)
+        self.trans_inv_btn.clicked.connect(self._open_transpose_inverse_dialog)
+        row_btn = QHBoxLayout()
+        row_btn.setContentsMargins(0, 0, 0, 0)
+        row_btn.addStretch(1)
+        row_btn.addWidget(self.trans_inv_btn, 0, Qt.AlignLeft)
+        row_btn.addStretch(1)
+        try:
+            idx = self.lay.indexOf(self.result_matrix_block)
+            if idx >= 0:
+                self.lay.insertLayout(idx + 1, row_btn)
+            else:
+                self.lay.addLayout(row_btn)
+        except Exception:
+            self.lay.addLayout(row_btn)
+        self._last_sum_result = None
+
     def _ensure_scalar_controls(self, count: int):
         while self.scalars_controls_layout.count():
             item = self.scalars_controls_layout.takeAt(0)
@@ -514,6 +533,8 @@ class SumaMatricesWindow(_BaseMatrixWindow):
         # mostrar matriz resultante visualmente
         try:
             self._show_matrix_result(result, title="Matriz resultante")
+            self._last_sum_result = result
+            self.trans_inv_btn.setEnabled(True)
         except Exception:
             pass
         if logs:
@@ -552,6 +573,151 @@ class SumaMatricesWindow(_BaseMatrixWindow):
             "2) Define cuántas matrices sumar y, si quieres, aplica escalares k1, k2...\n"
             "3) Pulsa \"Crear matrices\" para generar los tableros y luego \"Calcular\" para ver la suma y el detalle."
         )
+
+
+    def _open_transpose_inverse_dialog(self):
+        M = getattr(self, "_last_sum_result", None)
+        if not M:
+            QMessageBox.information(self, "Sin resultado", "Primero calcula la suma para obtener una matriz resultante.")
+            return
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Transpuesta e inversa de la matriz resultante")
+        lay = QVBoxLayout(dlg)
+        tabs = QTabWidget()
+        tabs.addTab(self._build_transpose_tab(tabs, M), "Transpuesta")
+        tabs.addTab(self._build_inverse_tab(tabs, M), "Inversa")
+        lay.addWidget(tabs)
+        dlg.resize(760, 560)
+        dlg.exec()
+
+    def _build_transpose_tab(self, parent, matrix):
+        tab = QWidget(parent)
+        layout = QVBoxLayout(tab)
+        layout.setSpacing(10)
+        layout.setContentsMargins(8, 8, 8, 8)
+        T, steps = self._transpose_with_steps(matrix)
+
+        highlight = QFrame()
+        highlight.setStyleSheet("background-color:#fff1f3;border:1px solid #d7a7ba;border-radius:10px;")
+        h_lay = QVBoxLayout(highlight)
+        h_lay.setContentsMargins(12, 10, 12, 12)
+        title = QLabel("Matriz transpuesta (A^T)")
+        title.setStyleSheet("font-weight:bold;font-size:15px;color:#7f1d1d;")
+        h_lay.addWidget(title, 0, Qt.AlignLeft)
+        try:
+            h_lay.addWidget(_matrix_widget(self, T))
+        except Exception:
+            pass
+        layout.addWidget(highlight)
+
+        steps_box = QTextEdit()
+        steps_box.setReadOnly(True)
+        steps_box.setPlainText("\n".join(steps))
+        steps_box.setMinimumHeight(200)
+        layout.addWidget(steps_box, 1)
+        return tab
+
+    def _build_inverse_tab(self, parent, matrix):
+        tab = QWidget(parent)
+        layout = QVBoxLayout(tab)
+        layout.setSpacing(10)
+        layout.setContentsMargins(8, 8, 8, 8)
+        inv, steps, status = self._inverse_with_steps(matrix)
+
+        highlight = QFrame()
+        highlight.setStyleSheet("background-color:#f2f7ff;border:1px solid #9bb3d7;border-radius:10px;")
+        h_lay = QVBoxLayout(highlight)
+        h_lay.setContentsMargins(12, 10, 12, 12)
+        title = QLabel("Matriz inversa (A^-1)")
+        title.setStyleSheet("font-weight:bold;font-size:15px;color:#0f172a;")
+        h_lay.addWidget(title, 0, Qt.AlignLeft)
+
+        if inv:
+            try:
+                h_lay.addWidget(_matrix_widget(self, inv))
+            except Exception:
+                pass
+        else:
+            msg = {
+                "empty": "No hay datos para calcular la inversa.",
+                "non_square": "La matriz no es cuadrada, por lo tanto no es invertible.",
+                "singular": "Determinante = 0, la matriz es singular y no tiene inversa.",
+            }.get(status, "No se pudo calcular la inversa.")
+            warn = QLabel(msg)
+            warn.setStyleSheet("color:#7f1d1d;font-weight:bold;")
+            warn.setWordWrap(True)
+            h_lay.addWidget(warn)
+
+        layout.addWidget(highlight)
+
+        steps_box = QTextEdit()
+        steps_box.setReadOnly(True)
+        steps_box.setPlainText("\n".join(steps))
+        steps_box.setMinimumHeight(200)
+        layout.addWidget(steps_box, 1)
+        return tab
+
+    def _transpose_with_steps(self, matrix):
+        rows = len(matrix)
+        cols = len(matrix[0]) if rows else 0
+        T = [[matrix[j][i] for j in range(rows)] for i in range(cols)] if rows else []
+        steps = []
+        steps.append("1) Operacion: A^T (intercambiar filas por columnas).")
+        steps.append(f"   A es {rows}x{cols}; A^T es {cols}x{rows}.")
+        steps.append("2) Copia de elementos:")
+        for i in range(rows):
+            for j in range(cols):
+                steps.append(f"   T[{j+1},{i+1}] = A[{i+1},{j+1}] = {matrix[i][j]}")
+        steps.append("3) Resultado: A^T mostrado arriba.")
+        return T, steps
+
+    def _inverse_with_steps(self, matrix):
+        steps = []
+        rows = len(matrix)
+        cols = len(matrix[0]) if rows else 0
+        if rows == 0 or cols == 0:
+            steps.append("No hay datos para calcular la inversa.")
+            return None, steps, "empty"
+        if rows != cols:
+            steps.append("La matriz no es cuadrada, por lo tanto no existe inversa.")
+            return None, steps, "non_square"
+
+        A = [[Fraction(val) for val in row] for row in matrix]
+        det, det_steps = determinante_con_pasos_ascii(A)
+        steps.append("1) Calculo del determinante |A|")
+        steps.extend(det_steps)
+        steps.append(f"\nDeterminante: {det}")
+        if det == 0:
+            steps.append("Como |A| = 0, la matriz es singular y no tiene inversa.")
+            return None, steps, "singular"
+
+        n = rows
+
+        def minor(M, r, c):
+            return [[M[i][j] for j in range(len(M)) if j != c] for i in range(len(M)) if i != r]
+
+        cof = [[Fraction(0) for _ in range(n)] for __ in range(n)]
+        steps.append("\n2) Matriz de cofactores C_ij = (-1)^{i+j} det(M_ij)")
+        for i in range(n):
+            for j in range(n):
+                sub = minor(A, i, j)
+                sub_det, _ = determinante_con_pasos_ascii(sub)
+                cof[i][j] = Fraction((1 if (i + j) % 2 == 0 else -1)) * sub_det
+                steps.append(f"   C{i+1}{j+1} = ({'-' if (i+j)%2 else '+'})det(M{i+1}{j+1}) = {cof[i][j]}")
+
+        adj = [[cof[j][i] for j in range(n)] for i in range(n)]
+        steps.append("\n3) Adjunta: Adj(A) = (Cof(A))^T")
+        steps.append("   Adj(A):")
+        for row in adj:
+            steps.append("   " + " ".join(str(v) for v in row))
+
+        inv = [[adj[i][j] / det for j in range(n)] for i in range(n)]
+        steps.append("\n4) Inversa: A^-1 = (1/|A|) * Adj(A)")
+        steps.append("   A^-1:")
+        for row in inv:
+            steps.append("   " + " ".join(str(v) for v in row))
+        steps.append("\nResultado: matriz inversa mostrada arriba.")
+        return inv, steps, "ok"
 
 
 class RestaMatricesWindow(SumaMatricesWindow):
