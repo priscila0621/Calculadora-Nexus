@@ -1068,6 +1068,17 @@ class TranspuestaMatrizWindow(_BaseMatrixWindow):
         except Exception:
             pass
 
+    def _update_input_min_height(self, rows: int):
+        """Ajusta la altura del scroll para que coincida con la matriz sin dejar huecos grandes."""
+        approx = rows * 44 + 60  # altura aproximada por fila + acolchado
+        target = max(140, min(740, approx))
+        self.scroll.setMinimumHeight(target)
+        self.scroll.setMaximumHeight(target)
+        try:
+            self.scrollw.setMinimumHeight(max(0, target - 40))
+        except Exception:
+            pass
+
     def _run(self):
         # Leer matriz A
         A = self._leer()
