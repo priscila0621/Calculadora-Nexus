@@ -259,7 +259,7 @@ class GaussJordanWindow(QMainWindow):
             QMessageBox.information(self, "Vacío", "No ingresaste ecuaciones.")
             return
         try:
-            M = self._parse_equations_text(text, self._cols_no_b)
+            M = self._parse_equations_text(text)
         except Exception as exc:
             QMessageBox.critical(self, "Error de parseo", f"No se pudieron interpretar las ecuaciones: {exc}")
             return
@@ -293,73 +293,60 @@ class GaussJordanWindow(QMainWindow):
     def _open_settings(self):
         open_settings_dialog(self)
 
-    def _parse_equations_text(self, text: str, num_vars_expected: int):
-        """Parsea texto con una ecuación por línea y devuelve matriz aumentada de Fraction.
-        num_vars_expected es el número de variables (n). Se requieren exactamente n ecuaciones.
-        """
+    def _parse_equations_text(self, text: str):
+        """Parsea texto con una ecuaciA3n por lA-nea y devuelve la matriz aumentada inferida."""
         lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
         if not lines:
-            raise ValueError("No hay líneas.")
-        # intentaremos inferir variables: si aparecen x1,x2.. usamos índices; sino recolectamos letras en orden
+            raise ValueError("No hay lA-neas.")
+        # inferir variables: si aparecen x1,x2.. usamos A-ndices; si no, letras en orden de apariciA3n
         var_names = []
         var_indexed = False
+        max_index = 0
         term_re = re.compile(r'([+-]?\s*(?:\d+(?:/\d+)?|\d*\.\d+)?)([a-zA-Z]\w*)')
         const_re = re.compile(r'([+-]?\s*(?:\d+(?:/\d+)?|\d*\.\d+))')
         parsed = []
         for ln in lines:
             if '=' not in ln:
-                raise ValueError(f"Falta '=' en la línea: {ln}")
+                raise ValueError(f"Falta '=' en la lA-nea: {ln}")
             left, right = ln.split('=', 1)
             left = left.strip()
             right = right.strip()
-            # encontrar términos con variables
             terms = term_re.findall(left)
             vars_in_line = [v for (_coef, v) in terms]
-            if any(re.match(r'^[a-zA-Z]+\d+$', v) for v in vars_in_line):
-                var_indexed = True
             for v in vars_in_line:
+                m_idx = re.match(r'^[a-zA-Z]+(\d+)$', v)
+                if m_idx:
+                    var_indexed = True
+                    max_index = max(max_index, int(m_idx.group(1)))
                 if v not in var_names:
                     var_names.append(v)
             parsed.append((left, right))
 
-        # construir mapa de variables según num_vars_expected
+        if not var_names:
+            raise ValueError("No se detectaron variables en las ecuaciones.")
+
         if var_indexed:
-            # variables like x1,x2 -> map by trailing digits
+            num_vars = max_index
             mapping = {}
+            next_idx = num_vars
             for name in var_names:
                 m = re.match(r'^([a-zA-Z]+)(\d+)$', name)
                 if m:
                     idx = int(m.group(2)) - 1
-                    mapping[name] = idx
-            # ensure mapping covers 0..n-1
-            # if not, generate generic names x1..xn
-            for i in range(num_vars_expected):
-                key = f'x{i+1}'
-                if key not in mapping:
-                    mapping[key] = i
+                else:
+                    idx = next_idx
+                    next_idx += 1
+                mapping[name] = idx
+            num_vars = max(mapping.values()) + 1 if mapping else num_vars
         else:
-            # pick first distinct variable letters up to num_vars_expected
-            encountered = []
-            for ln in lines:
-                for m in term_re.finditer(ln.split('=')[0]):
-                    name = m.group(2)
-                    if name not in encountered:
-                        encountered.append(name)
-            if len(encountered) < num_vars_expected:
-                # pad with x1..xn
-                for i in range(num_vars_expected):
-                    key = f'x{i+1}'
-                    if key not in encountered:
-                        encountered.append(key)
-            mapping = {name: idx for idx, name in enumerate(encountered[:num_vars_expected])}
+            num_vars = len(var_names)
+            mapping = {name: idx for idx, name in enumerate(var_names)}
 
-        # ahora parsear cada línea y construir coeficientes
         from fractions import Fraction as _F
         M = []
         for left, right in parsed:
-            coeffs = [ _F(0) for _ in range(num_vars_expected) ]
-            # sacar constantes sueltos en left (números sin variable)
-            # extraer variable terms
+            coeffs = [_F(0) for _ in range(num_vars)]
+            # extraer tAcrminos con variables
             for m in term_re.finditer(left):
                 raw_coef = m.group(1).replace(' ', '')
                 var = m.group(2)
@@ -370,12 +357,11 @@ class GaussJordanWindow(QMainWindow):
                 else:
                     coef = _F(raw_coef)
                 idx = mapping.get(var, None)
-                if idx is None or idx < 0 or idx >= num_vars_expected:
-                    raise ValueError(f"Variable inesperada '{var}' en la ecuación: {left}={right}")
+                if idx is None or idx < 0 or idx >= num_vars:
+                    raise ValueError(f"Variable inesperada '{var}' en la ecuaciA3n: {left}={right}")
                 coeffs[idx] += coef
-            # constantes on left (numbers without variable): move to right
+            # constantes sueltas en el lado izquierdo: se mueven a la derecha
             left_consts = 0
-            # remove variable terms to find standalone numbers
             cleaned = term_re.sub(' ', left)
             for m in const_re.finditer(cleaned):
                 s = m.group(1).replace(' ', '')
@@ -386,13 +372,11 @@ class GaussJordanWindow(QMainWindow):
             try:
                 rhs = _F(right.replace(',', '.'))
             except Exception:
-                raise ValueError(f"Constante derecha inválida: '{right}'")
+                raise ValueError(f"Constante derecha invalida: '{right}'")
             rhs = rhs - left_consts
             row = coeffs + [rhs]
             M.append(row)
 
-        if len(M) != num_vars_expected:
-            raise ValueError(f"Se esperaban {num_vars_expected} ecuaciones (filas) según la dimensión, pero se han dado {len(M)}.")
         return M
 
     def _leer_matriz(self):
@@ -809,4 +793,6 @@ def imprimir_vectores_con_x_igual(editor: QTextEdit, lines):
             editor.insertPlainText(" " * x_pos + x_eq + " " + l + "\n")
         else:
             editor.insertPlainText(" " * (x_pos + len(x_eq) + 1) + l + "\n")
+
+
 

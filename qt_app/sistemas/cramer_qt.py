@@ -373,7 +373,7 @@ class CramerWindow(QMainWindow):
             QMessageBox.information(self, "Vacío", "No ingresaste ecuaciones.")
             return
         try:
-            M = self._parse_equations_text(text, self._cols_no_b)
+            M = self._parse_equations_text(text)
         except Exception as exc:
             QMessageBox.critical(self, "Error de parseo", f"No se pudieron interpretar las ecuaciones: {exc}")
             return
@@ -401,56 +401,56 @@ class CramerWindow(QMainWindow):
             for j in range(columnas):
                 self._entries[i][j].setText(str(M[i][j]))
 
-    def _parse_equations_text(self, text: str, num_vars_expected: int):
+    def _parse_equations_text(self, text: str):
         import fractions as _fra
         lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
         if not lines:
-            raise ValueError("No hay líneas.")
+            raise ValueError("No hay lA-neas.")
         var_names = []
         var_indexed = False
+        max_index = 0
         term_re = re.compile(r'([+-]?\s*(?:\d+(?:/\d+)?|\d*\.\d+)?)([a-zA-Z]\w*)')
         const_re = re.compile(r'([+-]?\s*(?:\d+(?:/\d+)?|\d*\.\d+))')
         parsed = []
         for ln in lines:
             if '=' not in ln:
-                raise ValueError(f"Falta '=' en la línea: {ln}")
+                raise ValueError(f"Falta '=' en la lA-nea: {ln}")
             left, right = ln.split('=', 1)
             left = left.strip(); right = right.strip()
             terms = term_re.findall(left)
             vars_in_line = [v for (_coef, v) in terms]
-            if any(re.match(r'^[a-zA-Z]+\d+$', v) for v in vars_in_line):
-                var_indexed = True
             for v in vars_in_line:
+                m_idx = re.match(r'^[a-zA-Z]+(\d+)$', v)
+                if m_idx:
+                    var_indexed = True
+                    max_index = max(max_index, int(m_idx.group(1)))
                 if v not in var_names:
                     var_names.append(v)
             parsed.append((left, right))
+
+        if not var_names:
+            raise ValueError("No se detectaron variables en las ecuaciones.")
+
         if var_indexed:
+            num_vars = max_index
             mapping = {}
+            next_idx = num_vars
             for name in var_names:
                 m = re.match(r'^([a-zA-Z]+)(\d+)$', name)
                 if m:
                     idx = int(m.group(2)) - 1
-                    mapping[name] = idx
-            for i in range(num_vars_expected):
-                key = f'x{i+1}'
-                if key not in mapping:
-                    mapping[key] = i
+                else:
+                    idx = next_idx
+                    next_idx += 1
+                mapping[name] = idx
+            num_vars = max(mapping.values()) + 1 if mapping else num_vars
         else:
-            encountered = []
-            for ln in lines:
-                for m in term_re.finditer(ln.split('=')[0]):
-                    name = m.group(2)
-                    if name not in encountered:
-                        encountered.append(name)
-            if len(encountered) < num_vars_expected:
-                for i in range(num_vars_expected):
-                    key = f'x{i+1}'
-                    if key not in encountered:
-                        encountered.append(key)
-            mapping = {name: idx for idx, name in enumerate(encountered[:num_vars_expected])}
+            num_vars = len(var_names)
+            mapping = {name: idx for idx, name in enumerate(var_names)}
+
         M = []
         for left, right in parsed:
-            coeffs = [ _fra.Fraction(0) for _ in range(num_vars_expected) ]
+            coeffs = [_fra.Fraction(0) for _ in range(num_vars)]
             for m in term_re.finditer(left):
                 raw_coef = m.group(1).replace(' ', '')
                 var = m.group(2)
@@ -461,8 +461,8 @@ class CramerWindow(QMainWindow):
                 else:
                     coef = _fra.Fraction(raw_coef)
                 idx = mapping.get(var, None)
-                if idx is None or idx < 0 or idx >= num_vars_expected:
-                    raise ValueError(f"Variable inesperada '{var}' en la ecuación: {left}={right}")
+                if idx is None or idx < 0 or idx >= num_vars:
+                    raise ValueError(f"Variable inesperada '{var}' en la ecuaciA3n: {left}={right}")
                 coeffs[idx] += coef
             left_consts = 0
             cleaned = term_re.sub(' ', left)
@@ -475,12 +475,11 @@ class CramerWindow(QMainWindow):
             try:
                 rhs = _fra.Fraction(right.replace(',', '.'))
             except Exception:
-                raise ValueError(f"Constante derecha inválida: '{right}'")
+                raise ValueError(f"Constante derecha invalida: '{right}'")
             rhs = rhs - left_consts
             row = coeffs + [rhs]
             M.append(row)
-        if len(M) != num_vars_expected:
-            raise ValueError(f"Se esperaban {num_vars_expected} ecuaciones (filas) según la dimensión, pero se han dado {len(M)}.")
+
         return M
 
     def _leer_matriz(self):
@@ -813,3 +812,4 @@ class CramerWindow(QMainWindow):
             detalles_text.append("\n")
 
         self.detalles_text.setPlainText("\n".join(detalles_text))
+
