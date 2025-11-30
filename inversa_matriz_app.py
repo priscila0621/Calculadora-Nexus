@@ -482,7 +482,10 @@ class InversaMatrizApp:
             return
 
         if det == 0:
-            messagebox.showerror("Sin inversa", "La matriz no es invertible (determinante 0).")
+            messagebox.showerror(
+                "Sin inversa",
+                "La matriz no es invertible porque es una matriz singular.\nUna matriz es singular cuando su determinante es igual a cero."
+            )
             return
 
         tk.Label(right, text="Adj(A) =", font=("Segoe UI", 16, "bold"), bg=self.bg, fg="#b91c1c").pack(pady=(10, 0))

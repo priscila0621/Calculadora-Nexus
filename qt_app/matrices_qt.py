@@ -2182,7 +2182,11 @@ class InversaMatrizWindow(_BaseMatrixWindow):
 
                 # Si el determinante es cero, mostrar mensaje crítico y un bloque de conclusión
                 if total == 0:
-                    QMessageBox.critical(self, "Sin inversa", "La matriz no es invertible porque su determinante es 0.")
+                    QMessageBox.critical(
+                        self,
+                        "Sin inversa",
+                        "La matriz no es invertible porque es una matriz singular.\nUna matriz es singular cuando su determinante es igual a cero."
+                    )
                     # Mensaje final con formato claro y alineado
                     self.result_box.insertPlainText("Resultado:\n\n")
                     self.result_box.insertPlainText("El determinante de la matriz es 0.\n\n")
@@ -2246,7 +2250,11 @@ class InversaMatrizWindow(_BaseMatrixWindow):
 
                 # Si el determinante es cero, informar y mostrar el diálogo de error.
                 if total == 0:
-                    QMessageBox.critical(self, "Sin inversa", "La matriz no es invertible porque su determinante es 0.")
+                    QMessageBox.critical(
+                        self,
+                        "Sin inversa",
+                        "La matriz no es invertible porque es una matriz singular.\nUna matriz es singular cuando su determinante es igual a cero."
+                    )
                     # Ya mostramos el procedimiento del determinante arriba; terminar.
                     return
 
