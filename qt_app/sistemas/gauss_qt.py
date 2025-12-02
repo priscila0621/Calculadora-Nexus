@@ -364,7 +364,37 @@ class GaussWindow(QMainWindow):
                 inter_desc += "Si. Los planos coinciden y la interseccion es un plano completo con infinitos puntos en comun."
             else:
                 inter_desc += "Si. Comparten infinitos puntos en comun."
-            self.result.insertPlainText("\n" + inter_desc + "\n")
+            self.result.insertPlainText("\n" + inter_desc + "\n\n")
+            pivot_cols, free_cols, pivot_row_for_col = self._analizar_rref(self.matriz_final)
+            if free_cols:
+                self.result.insertPlainText("Conjunto solucion (forma vectorial):\n\n")
+                num_vars = len(soluciones)
+                particular = []
+                for j in range(num_vars):
+                    if j in free_cols:
+                        particular.append(Fraction(0))
+                    else:
+                        irow = pivot_row_for_col.get(j, None)
+                        particular.append(self.matriz_final[irow][-1] if irow is not None else Fraction(0))
+                vectores_libres = []
+                for l in free_cols:
+                    v = [Fraction(0)] * num_vars
+                    v[l] = Fraction(1)
+                    for j in pivot_cols:
+                        irow = pivot_row_for_col[j]
+                        v[j] = -self.matriz_final[irow][l]
+                    vectores_libres.append(v)
+                es_homogeneo = all(self.matriz_original[i][-1] == 0 for i in range(len(self.matriz_original))) if self.matriz_original else False
+                if not es_homogeneo:
+                    nombres = ["  "] + [f"x{l+1}" for l in free_cols]
+                    vectores = [particular] + vectores_libres
+                else:
+                    nombres = [f"x{l+1}" for l in free_cols]
+                    vectores = vectores_libres
+                lines = self.vectores_columna_lado_a_lado(vectores, nombres, espacio_entre_vectores=4)
+                self.imprimir_vectores_con_x_igual(lines)
+                libres_str = ", ".join([f"x{l+1}" for l in free_cols])
+                self.result.insertPlainText(f"\nDonde {libres_str} son parámetros libres.\n")
 
         self.result.moveCursor(QTextCursor.End)
 
@@ -427,6 +457,36 @@ class GaussWindow(QMainWindow):
             else:
                 inter_desc += "Si. Comparten infinitos puntos en comun."
             self.result.insertPlainText(inter_desc + "\n")
+            pivot_cols, free_cols, pivot_row_for_col = self._analizar_rref(self.matriz_final)
+            if free_cols:
+                self.result.insertPlainText("Conjunto solucion (forma vectorial):\n\n")
+                num_vars = len(soluciones)
+                particular = []
+                for j in range(num_vars):
+                    if j in free_cols:
+                        particular.append(Fraction(0))
+                    else:
+                        irow = pivot_row_for_col.get(j, None)
+                        particular.append(self.matriz_final[irow][-1] if irow is not None else Fraction(0))
+                vectores_libres = []
+                for l in free_cols:
+                    v = [Fraction(0)] * num_vars
+                    v[l] = Fraction(1)
+                    for j in pivot_cols:
+                        irow = pivot_row_for_col[j]
+                        v[j] = -self.matriz_final[irow][l]
+                    vectores_libres.append(v)
+                es_homogeneo = all(self.matriz_original[i][-1] == 0 for i in range(len(self.matriz_original))) if self.matriz_original else False
+                if not es_homogeneo:
+                    nombres = ["  "] + [f"x{l+1}" for l in free_cols]
+                    vectores = [particular] + vectores_libres
+                else:
+                    nombres = [f"x{l+1}" for l in free_cols]
+                    vectores = vectores_libres
+                lines = self.vectores_columna_lado_a_lado(vectores, nombres, espacio_entre_vectores=4)
+                self.imprimir_vectores_con_x_igual(lines)
+                libres_str = ", ".join([f"x{l+1}" for l in free_cols])
+                self.result.insertPlainText(f"\nDonde {libres_str} son parámetros libres.\n")
         else:
             for i, val in enumerate(soluciones):
                 self.result.insertPlainText(f"x{i+1} = {val}\n")
@@ -607,6 +667,22 @@ class GaussWindow(QMainWindow):
                 soluciones[pivotes[i]] = A[i][-1]
         return soluciones, "determinado"
 
+    def _analizar_rref(self, A):
+        n = len(A)
+        m = len(A[0])
+        num_vars = m - 1
+        piv_col_por_fila = [-1] * n
+        piv_fila_por_col = {}
+        for i in range(n):
+            for j in range(num_vars):
+                if A[i][j] == 1 and all(A[k][j] == 0 for k in range(n) if k != i):
+                    piv_col_por_fila[i] = j
+                    piv_fila_por_col[j] = i
+                    break
+        pivot_cols = [j for j in piv_col_por_fila if j != -1]
+        free_cols = [j for j in range(num_vars) if j not in pivot_cols]
+        return pivot_cols, free_cols, piv_fila_por_col
+
     def _formatear_sistema_ecuaciones(self, A_aug):
         if not A_aug:
             return []
@@ -644,6 +720,56 @@ class GaussWindow(QMainWindow):
             right = str(A_aug[i][-1]) if m > 0 else "0"
             lines.append(f"{left} = {right}")
         return lines
+
+    def vectores_columna_lado_a_lado(self, vectores, nombres, espacio_entre_vectores=4):
+        if not vectores:
+            return []
+        n = len(vectores[0])
+        m = len(vectores)
+        encabezados = [nombres[0]] + [f"+ {nombres[idx]}" for idx in range(1, m)]
+        max_encabezado = max((len(e) for e in encabezados), default=0)
+        max_num_len = 1
+        for v in vectores:
+            for fila in range(n):
+                max_num_len = max(max_num_len, len(str(v[fila])))
+        bloque_ancho = max_encabezado + 3 + max_num_len + 2
+        sep = " " * espacio_entre_vectores
+        lines = []
+        for fila in range(n):
+            line = ""
+            for idx, v in enumerate(vectores):
+                valstr = str(v[fila]).rjust(max_num_len)
+                if fila == 0:
+                    li, ri = "\u23A1", "\u23A4"
+                elif fila == n - 1:
+                    li, ri = "\u23A3", "\u23A6"
+                else:
+                    li, ri = "\u23A2", "\u23A5"
+                if fila == 0:
+                    encabezado = encabezados[idx].rjust(max_encabezado)
+                    bloque = f"{encabezado} {li} {valstr} {ri}"
+                else:
+                    bloque = " " * max_encabezado + f" {li} {valstr} {ri}"
+                bloque = bloque.ljust(bloque_ancho)
+                if idx < m - 1:
+                    bloque += sep
+                line += bloque
+            lines.append(line.rstrip())
+        return lines
+
+    def imprimir_vectores_con_x_igual(self, lines):
+        if not lines:
+            return
+        x_eq = "x ="
+        first = lines[0]
+        pos = first.find("\u23A1")
+        pos = 0 if pos < 0 else pos
+        x_pos = max(0, pos - len(x_eq) - 1)
+        for i, l in enumerate(lines):
+            if i == 0:
+                self.result.insertPlainText(" " * x_pos + x_eq + " " + l + "\n")
+            else:
+                self.result.insertPlainText(" " * (x_pos + len(x_eq) + 1) + l + "\n")
 
     def _preview_sistema(self):
         if getattr(self, "matriz_triangular", None) is not None:
