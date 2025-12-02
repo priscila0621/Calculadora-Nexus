@@ -346,12 +346,25 @@ class GaussWindow(QMainWindow):
             self.result.insertPlainText("El sistema es inconsistente: fila 0 = b con b ≠ 0.\n")
         elif tipo == "determinado":
             self.result.insertPlainText("Solución única:\n")
+            self.result.insertPlainText(
+                "Un sistema tiene solucion unica cuando todas sus ecuaciones se cruzan en un solo punto.\n"
+                "Ese punto es el valor exacto de cada variable que cumple todas las ecuaciones al mismo tiempo.\n\n"
+            )
             for i, val in enumerate(soluciones):
                 self.result.insertPlainText(f"x{i+1} = {val}\n")
         elif tipo == "indeterminado":
             self.result.insertPlainText("Infinitas soluciones:\n")
             for i, val in enumerate(soluciones):
                 self.result.insertPlainText(f"x{i+1} = {val}\n")
+            libres = [idx for idx, val in enumerate(soluciones) if isinstance(val, str) and "variable libre" in val]
+            inter_desc = "Se intersectan los dos planos? "
+            if len(libres) == 1:
+                inter_desc += "Si. Su interseccion es una recta descrita por la solucion parametrica mostrada."
+            elif len(libres) >= 2:
+                inter_desc += "Si. Los planos coinciden y la interseccion es un plano completo con infinitos puntos en comun."
+            else:
+                inter_desc += "Si. Comparten infinitos puntos en comun."
+            self.result.insertPlainText("\n" + inter_desc + "\n")
 
         self.result.moveCursor(QTextCursor.End)
 
@@ -393,6 +406,27 @@ class GaussWindow(QMainWindow):
         soluciones, tipo = self._extraer_soluciones(self.matriz_final)
         if tipo == "incompatible":
             self.result.insertPlainText("Sistema incompatible.\n")
+        elif tipo == "determinado":
+            self.result.insertPlainText(
+                "Solución única:\n"
+                "Un sistema tiene solucion unica cuando todas sus ecuaciones se cruzan en un solo punto.\n"
+                "Ese punto es el valor exacto de cada variable que cumple todas las ecuaciones al mismo tiempo.\n"
+            )
+            for i, val in enumerate(soluciones):
+                self.result.insertPlainText(f"x{i+1} = {val}\n")
+        elif tipo == "indeterminado":
+            self.result.insertPlainText("Infinitas soluciones:\n")
+            for i, val in enumerate(soluciones):
+                self.result.insertPlainText(f"x{i+1} = {val}\n")
+            libres = [idx for idx, val in enumerate(soluciones) if isinstance(val, str) and "variable libre" in val]
+            inter_desc = "Se intersectan los dos planos? "
+            if len(libres) == 1:
+                inter_desc += "Si. Su interseccion es una recta descrita por la solucion parametrica mostrada."
+            elif len(libres) >= 2:
+                inter_desc += "Si. Los planos coinciden y la interseccion es un plano completo con infinitos puntos en comun."
+            else:
+                inter_desc += "Si. Comparten infinitos puntos en comun."
+            self.result.insertPlainText(inter_desc + "\n")
         else:
             for i, val in enumerate(soluciones):
                 self.result.insertPlainText(f"x{i+1} = {val}\n")
