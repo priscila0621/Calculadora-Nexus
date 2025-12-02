@@ -47,6 +47,11 @@ class MenuSistemasWindow(QMainWindow):
         btn_gauss.clicked.connect(self._open_gauss)
         nav_lay.addWidget(btn_gauss)
 
+        btn_gauss_simple = QPushButton("Gauss")
+        btn_gauss_simple.setMinimumHeight(36)
+        btn_gauss_simple.clicked.connect(self._open_gauss_simple)
+        nav_lay.addWidget(btn_gauss_simple)
+
         btn_cramer = QPushButton("Método de Cramer")
         btn_cramer.setMinimumHeight(36)
         btn_cramer.clicked.connect(self._open_cramer)
@@ -91,6 +96,7 @@ class MenuSistemasWindow(QMainWindow):
         card_lay.addWidget(subtitle)
 
         insights = QLabel(
+            "• Gauss: eliminación hacia matriz triangular con sustitución posterior.\n"
             "• Gauss-Jordan: ideal para pivotear matrices aumentadas y diagnosticar la naturaleza del sistema.\n"
             "• Método de Cramer: ejecuta determinantes automáticamente cuando la matriz es invertible."
         )
@@ -154,6 +160,28 @@ class MenuSistemasWindow(QMainWindow):
                 QMessageBox.critical(self, "Error al abrir Cramer", msg)
             except Exception:
                 print("Error abriendo Cramer:", exc)
+                print(tb)
+
+    def _open_gauss_simple(self):
+        try:
+            from .sistemas.gauss_qt import GaussWindow
+            w = GaussWindow(parent=self)
+            w.showMaximized()
+            self._child = w
+        except Exception as exc:
+            import traceback, os
+            tb = traceback.format_exc()
+            path = os.path.join(os.path.dirname(__file__), "error_traceback.txt")
+            try:
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write(tb)
+            except Exception:
+                pass
+            msg = f"No se pudo abrir la ventana. Se ha guardado el detalle en:\n{path}\n\nPor favor, pega aquí el contenido de ese archivo.\n\nError: {exc}"
+            try:
+                QMessageBox.critical(self, "Error al abrir Gauss", msg)
+            except Exception:
+                print("Error abriendo Gauss:", exc)
                 print(tb)
 
     def _open_settings(self):

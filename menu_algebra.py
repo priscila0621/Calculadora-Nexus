@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import traceback
 from gauss_jordan_app import GaussJordanApp
+from gauss_app import GaussApp
 from menu_matrices import MenuMatrices
 from independencia_lineal import IndependenciaLinealApp
 from transformaciones_lineales_app import TransformacionesLinealesApp
@@ -43,9 +44,16 @@ class MenuAlgebra:
 
         ttk.Button(
             root,
-            text="Resolver sistema de ecuaciones lineales",
+            text="Resolver sistema de ecuaciones lineales (Gauss-Jordan)",
             style="Primary.TButton",
             command=self.abrir_sistema,
+        ).pack(pady=10)
+
+        ttk.Button(
+            root,
+            text="Método de Gauss (eliminación)",
+            style="Primary.TButton",
+            command=self.abrir_gauss,
         ).pack(pady=10)
 
         ttk.Button(
@@ -101,6 +109,9 @@ class MenuAlgebra:
 
     def abrir_sistema(self):
         self._abrir_toplevel(GaussJordanApp, "Sistema de ecuaciones")
+
+    def abrir_gauss(self):
+        self._abrir_toplevel(GaussApp, "Sistema de ecuaciones (Gauss)")
 
     def abrir_matrices(self):
         self._abrir_toplevel(MenuMatrices, "Operaciones con matrices")
