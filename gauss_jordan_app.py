@@ -328,6 +328,15 @@ class GaussJordanApp:
                 if isinstance(val, str) and "variable libre" in val:
                     libres.append(i)
 
+            inter_desc = "Se intersectan los dos planos? "
+            if len(libres) == 1:
+                inter_desc += "Si. Su interseccion es una recta descrita por la solucion parametrica mostrada."
+            elif len(libres) >= 2:
+                inter_desc += "Si. Los planos coinciden y la interseccion es un plano completo con infinitos puntos en comun."
+            else:
+                inter_desc += "Si. Comparten infinitos puntos en comun."
+            self.text_result.insert(tk.END, inter_desc + "\n\n")
+
             # Determinar si el sistema es homogÃ©neo (todos los tÃ©rminos independientes son 0)
             es_homogeneo = all(self.matriz_original[i][-1] == 0 for i in range(self.filas))
 

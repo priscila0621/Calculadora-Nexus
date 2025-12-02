@@ -557,6 +557,14 @@ class GaussJordanWindow(QMainWindow):
         # Forma vectorial estilo libro cuando hay variables libres
         if tipo == "indeterminado":
             pivot_cols, free_cols, pivot_row_for_col = analisis
+            inter_desc = "Se intersectan los dos planos? "
+            if len(free_cols) == 1:
+                inter_desc += "Si. Su interseccion es una recta descrita por la solucion parametrica mostrada."
+            elif len(free_cols) >= 2:
+                inter_desc += "Si. Los planos coinciden y la interseccion es un plano completo con infinitos puntos en comun."
+            else:
+                inter_desc += "Si. Comparten infinitos puntos en comun."
+            self.result.insertPlainText(inter_desc + "\n\n")
             if free_cols:
                 self.result.insertPlainText("\nConjunto solución:\n\n")
                 num_vars = len(soluciones)
