@@ -1,12 +1,13 @@
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QScrollArea, QGridLayout, QLineEdit, QTextEdit, QMessageBox, QFrame,
-    QToolButton, QMenu, QSlider
+    QToolButton, QMenu, QSlider, QDialog, QDialogButtonBox, QPlainTextEdit
 )
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QTextCursor
 from fractions import Fraction
 from copy import deepcopy
+import re
 from ..theme import bind_font_scale_stylesheet, bind_theme_icon, make_overflow_icon, gear_icon_preferred
 from ..settings_qt import open_settings_dialog
 
@@ -112,6 +113,10 @@ class GaussWindow(QMainWindow):
         self.btn_limpiar = QPushButton("Limpiar pantalla")
         self.btn_limpiar.clicked.connect(self._limpiar)
         top.addWidget(self.btn_limpiar)
+        # nueva opción: ingreso por ecuaciones (texto)
+        self.btn_ingresar_ecuaciones = QPushButton("Ingresar ecuaciones")
+        self.btn_ingresar_ecuaciones.clicked.connect(self._open_ecuaciones_dialog)
+        top.addWidget(self.btn_ingresar_ecuaciones)
         top.addSpacing(18)
         top.addStretch(1)
         more_btn = QToolButton()
@@ -195,9 +200,11 @@ class GaussWindow(QMainWindow):
         for j in range(columnas - 1):
             h = QLabel(f"x{j+1}")
             h.setStyleSheet("font-weight: 700;")
+            h.setAlignment(Qt.AlignHCenter)
             self.grid_layout.addWidget(h, 0, j)
         h = QLabel("b")
         h.setStyleSheet("font-weight: 700;")
+        h.setAlignment(Qt.AlignHCenter)
         self.grid_layout.addWidget(h, 0, columnas - 1)
         self._entries = []
         for i in range(filas):
@@ -205,6 +212,7 @@ class GaussWindow(QMainWindow):
             for j in range(columnas):
                 e = QLineEdit()
                 e.setPlaceholderText("0")
+                e.setAlignment(Qt.AlignCenter)
                 e.textChanged.connect(self._on_change)
                 self.grid_layout.addWidget(e, i + 1, j)
                 row.append(e)
@@ -238,6 +246,56 @@ class GaussWindow(QMainWindow):
         self._cols_no_b = val
         self.col_value_label.setText(str(val))
         self._rebuild_grid(self._rows, self._cols_no_b + 1)
+
+    def _open_ecuaciones_dialog(self):
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Ingresar ecuaciones")
+        lay = QVBoxLayout(dlg)
+        info = QLabel("Ingrese una ecuación por línea. Ejemplo: 2x + 3y = 5\nUse variables como x, y, z o x1, x2...")
+        info.setWordWrap(True)
+        lay.addWidget(info)
+        editor = QPlainTextEdit()
+        editor.setPlaceholderText("Ej:\n2x + 3y = 5\n-x + 4y = 1")
+        lay.addWidget(editor, 1)
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(dlg.accept)
+        buttons.rejected.connect(dlg.reject)
+        lay.addWidget(buttons)
+        if dlg.exec() != QDialog.Accepted:
+            return
+        text = editor.toPlainText().strip()
+        if not text:
+            QMessageBox.information(self, "Vacío", "No ingresaste ecuaciones.")
+            return
+        try:
+            M = self._parse_equations_text(text)
+        except Exception as exc:
+            QMessageBox.critical(self, "Error de parseo", f"No se pudieron interpretar las ecuaciones: {exc}")
+            return
+        filas = len(M)
+        columnas = len(M[0]) if filas else 0
+        if filas == 0:
+            QMessageBox.warning(self, "Error", "No se detectaron ecuaciones válidas.")
+            return
+        self._rows = filas
+        self._cols_no_b = columnas - 1
+        if self.row_slider.maximum() < self._rows:
+            self.row_slider.setMaximum(self._rows)
+        if self.col_slider.maximum() < self._cols_no_b:
+            self.col_slider.setMaximum(self._cols_no_b)
+        self.row_slider.blockSignals(True)
+        self.row_slider.setValue(self._rows)
+        self.row_slider.blockSignals(False)
+        self.row_value_label.setText(str(self._rows))
+        self.col_slider.blockSignals(True)
+        self.col_slider.setValue(self._cols_no_b)
+        self.col_slider.blockSignals(False)
+        self.col_value_label.setText(str(self._cols_no_b))
+        self._rebuild_grid(self._rows, self._cols_no_b + 1)
+        for i in range(filas):
+            for j in range(columnas):
+                val = M[i][j]
+                self._entries[i][j].setText(str(val))
 
     def _resolver(self):
         try:
@@ -589,3 +647,57 @@ class GaussWindow(QMainWindow):
 
     def _open_settings(self):
         open_settings_dialog(self)
+
+    def _parse_equations_text(self, text: str):
+        """Parsea texto con una ecuación por línea y devuelve la matriz aumentada inferida."""
+        lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+        if not lines:
+            raise ValueError("No hay líneas.")
+        var_names = []
+        var_indexed = False
+        max_index = 0
+        term_re = re.compile(r'([+-]?\s*(?:\d+(?:/\d+)?|\d*\.\d+)?)([a-zA-Z]\w*)')
+        const_re = re.compile(r'([+-]?\s*(?:\d+(?:/\d+)?|\d*\.\d+))')
+        parsed = []
+        for ln in lines:
+            if '=' not in ln:
+                raise ValueError(f"Falta '=' en la línea: {ln}")
+            left, right = ln.split('=', 1)
+            left = left.strip()
+            right = right.strip()
+            terms = term_re.findall(left)
+            vars_in_line = [v for (_coef, v) in terms]
+            for v in vars_in_line:
+                m_idx = re.match(r'^[a-zA-Z]+(\d+)$', v)
+                if m_idx:
+                    var_indexed = True
+                    max_index = max(max_index, int(m_idx.group(1)))
+                if v not in var_names:
+                    var_names.append(v)
+            coef_map = {}
+            for coef_str, var in terms:
+                cstr = coef_str.replace(" ", "")
+                if cstr in ("", "+", "-"):
+                    coef_val = Fraction(1 if cstr != "-" else -1, 1)
+                else:
+                    coef_val = Fraction(cstr)
+                coef_map[var] = coef_map.get(var, Fraction(0)) + coef_val
+            const_match = const_re.findall(right)
+            if len(const_match) != 1:
+                raise ValueError(f"No se pudo leer el término independiente en: {ln}")
+            b_val = Fraction(const_match[0].replace(" ", ""))
+            parsed.append((coef_map, b_val))
+        if var_indexed:
+            num_vars = max_index
+            var_order = [f"x{i}" for i in range(1, num_vars + 1)]
+        else:
+            var_order = var_names
+            num_vars = len(var_order)
+        matriz = []
+        for coef_map, b_val in parsed:
+            fila = []
+            for var in var_order:
+                fila.append(coef_map.get(var, Fraction(0)))
+            fila.append(b_val)
+            matriz.append(fila)
+        return matriz
