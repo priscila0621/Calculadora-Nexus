@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
 )
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QTextCursor
 from fractions import Fraction
 from copy import deepcopy
 from .gauss_jordan_qt import (
@@ -114,6 +115,20 @@ class LeontiefWindow(QMainWindow):
         self.txt.setReadOnly(True)
         self.txt.setMinimumHeight(480)
         self.txt.setLineWrapMode(QTextEdit.NoWrap)
+        # Estilo más cálido y legible para los pasos
+        self.txt.setStyleSheet(
+            """
+            QTextEdit {
+                background: #fff8fb;
+                border: 1px solid #e8c9d6;
+                border-radius: 12px;
+                padding: 12px;
+                font-family: 'Consolas', 'Cascadia Code', monospace;
+                font-size: 12px;
+                color: #4a2b36;
+            }
+            """
+        )
         right_layout.addWidget(self.txt, 1)
 
         self.crear_tablas()
@@ -251,47 +266,59 @@ class LeontiefWindow(QMainWindow):
         return lines
 
     def _write_block(self, title, lines):
-        self.txt.insertPlainText(title + "\n")
-        for ln in lines:
-            self.txt.insertPlainText(ln + "\n")
-        self.txt.insertPlainText("\n")
+        pre = "\n".join(lines)
+        return (
+            f"<div class='card'>"
+            f"<div class='card-title'>{title}</div>"
+            f"<pre>{pre}</pre>"
+            f"</div>"
+        )
 
     def _mostrar_resultados(self, C, D, I, I_minus_C, A_inicial, soluciones, tipo, analisis):
-        self.txt.clear()
-        self.txt.insertPlainText("MODELO DE LEONTIEF\n\n")
-        self._write_block("Datos ingresados - C", self._matrix_lines(C))
-        self._write_block("Datos ingresados - D", self._vector_lines(D))
-        self._write_block("Matriz identidad I", self._matrix_lines(I))
-        self._write_block("Matriz (I - C)", self._matrix_lines(I_minus_C))
-        self.txt.insertPlainText("Sistema (I - C) * X = D\n\n")
-        self._write_block("Matriz aumentada (I - C | D)", format_matriz_lines(A_inicial))
+        cards = []
+        cards.append("<h2 style='margin-bottom:6px;color:#6f2c4f;'>Modelo de Leontief</h2>")
+        cards.append(self._write_block("Datos ingresados - C", self._matrix_lines(C)))
+        cards.append(self._write_block("Datos ingresados - D", self._vector_lines(D)))
+        cards.append(self._write_block("Matriz identidad I", self._matrix_lines(I)))
+        cards.append(self._write_block("Matriz (I - C)", self._matrix_lines(I_minus_C)))
+        cards.append(self._write_block("Matriz aumentada (I - C | D)", format_matriz_lines(A_inicial)))
 
         if self.pasos:
-            self.txt.insertPlainText("Aplicando Gauss-Jordan:\n\n")
+            pasos_html = ["<div class='card'><div class='card-title'>Aplicando Gauss-Jordan</div>"]
             for idx, step in enumerate(self.pasos, start=1):
-                self.txt.insertPlainText(f"Paso {idx}: {step['titulo']}\n")
+                pasos_html.append(f"<div class='step-title'>Paso {idx}: {step['titulo']}</div>")
                 if step.get("comentario"):
-                    self.txt.insertPlainText(step["comentario"] + "\n")
+                    pasos_html.append(f"<div class='comment'>{step['comentario']}</div>")
                 oper_lines = step.get("oper_lines", [])
                 matriz_lines = step.get("matriz_lines", [])
                 max_left = max((len(s) for s in oper_lines), default=0)
                 sep = "   |   "
                 max_len = max(len(oper_lines), len(matriz_lines))
+                bloque = []
                 for i in range(max_len):
                     left = oper_lines[i] if i < len(oper_lines) else ""
                     right = matriz_lines[i] if i < len(matriz_lines) else ""
-                    line_text = left.ljust(max_left) + (sep if right else "") + right + "\n"
-                    self.txt.insertPlainText(line_text)
-                self.txt.insertPlainText("\n" + "-" * 100 + "\n\n")
+                    line_text = left.ljust(max_left) + (sep if right else "") + right
+                    bloque.append(line_text)
+                pasos_html.append(f"<pre>{chr(10).join(bloque)}</pre>")
+                pasos_html.append("<hr class='separator'>")
+            pasos_html.append("</div>")
+            cards.append("".join(pasos_html))
 
-        self._write_block("Matriz reducida (I - C | X)", format_matriz_lines(self.matriz_final))
+        cards.append(self._write_block("Matriz reducida (I - C | X)", format_matriz_lines(self.matriz_final)))
 
         if tipo == "incompatible" or soluciones is None:
-            self.txt.insertPlainText("El sistema es incompatible: no existe producción que cumpla con D.\n")
+            cards.append("<div class='card'><div class='card-title'>Resultado</div>"
+                         "<div class='alert'>El sistema es incompatible: no existe producción que cumpla con D.</div></div>")
         else:
+            header = "Vector de producción total X"
+            body = "\n".join(self._vector_lines(soluciones))
+            desc = ""
             if tipo == "indeterminado":
-                self.txt.insertPlainText("El sistema tiene infinitas soluciones (forma paramétrica):\n")
-            self._write_block("Vector de producción total X", self._vector_lines(soluciones))
+                desc = "<div class='comment'>El sistema tiene infinitas soluciones (forma paramétrica).</div>"
+            cards.append(
+                f"<div class='card'><div class='card-title'>{header}</div>{desc}<pre>{body}</pre></div>"
+            )
 
         # Mostrar forma vectorial si hay variables libres
         libres = analisis[1] if analisis else []
@@ -334,6 +361,28 @@ class LeontiefWindow(QMainWindow):
             lines = vectores_columna_lado_a_lado([particular] + vectores_libres,
                                                  ["  "] + [f"x{l+1}" for l in libres],
                                                  espacio_entre_vectores=4)
-            imprimir_vectores_con_x_igual(self.txt, lines)
+            extra = []
+            from io import StringIO
+            buff = StringIO()
+            imprimir_vectores_con_x_igual(buff, lines)
+            extra.append(buff.getvalue())
+            cards.append(
+                "<div class='card'><div class='card-title'>Forma vectorial</div>"
+                f"<pre>{''.join(extra)}</pre></div>"
+            )
 
-        self.txt.moveCursor(self.txt.textCursor().Start)
+        # Render final con algo de CSS inline
+        style = """
+        <style>
+        .card { background:#fff; border:1px solid #eed6e1; border-radius:12px; padding:12px; margin-bottom:10px; box-shadow:0 6px 18px rgba(101,47,78,0.06);}
+        .card-title { font-weight:700; color:#7c2c52; margin-bottom:6px; }
+        .step-title { font-weight:700; color:#5b2a40; margin-top:6px; }
+        .comment { color:#8a5a70; font-style:italic; margin-bottom:6px; }
+        .alert { color:#8a1f3f; font-weight:600; }
+        pre { background:#fdf4f8; border:1px solid #f1d8e3; border-radius:8px; padding:10px; overflow-x:auto; }
+        .separator { border:none; border-top:1px dashed #e5c3d4; margin:8px 0; }
+        </style>
+        """
+        html = style + "".join(cards)
+        self.txt.setHtml(html)
+        self.txt.moveCursor(QTextCursor.Start)

@@ -11,6 +11,10 @@ class LeontiefApp:
 
         self.bg = "#ffe4e6"
         self.entry_bg = "#fff0f5"
+        self.panel_bg = "#fdf7fb"
+        self.card_bg = "#fff7fb"
+        self.card_border = "#fbcfe8"
+        self.mono_font = ("Consolas", 11)
         self.n = 0
         self.entries_c = []
         self.entries_d = []
@@ -49,6 +53,11 @@ class LeontiefApp:
                         background="#fecaca", foreground="#b91c1c")
         style.map("Back.TButton",
                   background=[("!disabled", "#fecaca"), ("active", "#fca5a5")],
+                  foreground=[("!disabled", "#b91c1c"), ("active", "#7f1d1d")])
+        style.configure("Ghost.TButton", font=("Segoe UI", 10, "bold"), padding=4,
+                        background=self.bg, foreground="#b91c1c", borderwidth=0)
+        style.map("Ghost.TButton",
+                  background=[("!disabled", self.bg), ("active", "#ffe4e6")],
                   foreground=[("!disabled", "#b91c1c"), ("active", "#7f1d1d")])
 
     # ---------------------------------------------------------
@@ -127,17 +136,25 @@ class LeontiefApp:
         self.frame_d = ttk.LabelFrame(left, text="Vector de demanda final D", padding=10, labelanchor="n")
         self.frame_d.pack(fill="x", pady=(0, 8))
 
-        result_frame = ttk.LabelFrame(right, text="Procedimiento y resultados", padding=12, labelanchor="n")
+        result_frame = ttk.LabelFrame(right, text="Procedimiento y resultados", padding=4, labelanchor="n")
         result_frame.pack(fill="both", expand=True)
-        self.text_result = tk.Text(result_frame, height=32, wrap="none",
-                                   font=("Consolas", 11), bg="#fff0f5", fg="#222",
-                                   relief="solid", borderwidth=1)
-        self.text_result.pack(side="left", fill="both", expand=True)
-        scroll_y = ttk.Scrollbar(result_frame, orient="vertical", command=self.text_result.yview)
+        result_wrapper = tk.Frame(result_frame, bg=self.panel_bg)
+        result_wrapper.pack(fill="both", expand=True, padx=6, pady=6)
+        self.result_canvas = tk.Canvas(result_wrapper, bg=self.panel_bg, highlightthickness=0)
+        self.result_canvas.pack(side="left", fill="both", expand=True)
+        scroll_y = ttk.Scrollbar(result_wrapper, orient="vertical", command=self.result_canvas.yview)
         scroll_y.pack(side="right", fill="y")
-        self.text_result.configure(yscrollcommand=scroll_y.set, state="disabled")
-        self.text_result.tag_configure("bold", font=("Consolas", 12, "bold"))
-        self.text_result.tag_configure("title", font=("Consolas", 14, "bold"))
+        self.result_canvas.configure(yscrollcommand=scroll_y.set)
+        self.result_container = tk.Frame(self.result_canvas, bg=self.panel_bg)
+        self.result_window = self.result_canvas.create_window((0, 0), window=self.result_container, anchor="nw")
+        self.result_container.bind(
+            "<Configure>",
+            lambda e: self.result_canvas.configure(scrollregion=self.result_canvas.bbox("all"))
+        )
+        self.result_canvas.bind(
+            "<Configure>",
+            lambda e: self.result_canvas.itemconfigure(self.result_window, width=e.width)
+        )
 
     # ---------------------------------------------------------
     # Helpers UI
@@ -153,9 +170,7 @@ class LeontiefApp:
             self.grid_d_frame.destroy()
             self.grid_d_frame = None
 
-        self.text_result.configure(state="normal")
-        self.text_result.delete("1.0", tk.END)
-        self.text_result.configure(state="disabled")
+        self._clear_result_panel()
         try:
             self.btn_resolver.state(["disabled"])
         except Exception:
@@ -199,13 +214,21 @@ class LeontiefApp:
             e.grid(row=i, column=1, padx=6, pady=4)
             self.entries_d.append(e)
 
-        self.text_result.configure(state="normal")
-        self.text_result.delete("1.0", tk.END)
-        self.text_result.configure(state="disabled")
+        self._clear_result_panel()
         try:
             self.btn_resolver.state(["!disabled"])
         except Exception:
             pass
+
+    def _clear_result_panel(self):
+        if getattr(self, "result_container", None):
+            for child in self.result_container.winfo_children():
+                child.destroy()
+        if getattr(self, "result_canvas", None):
+            try:
+                self.result_canvas.yview_moveto(0)
+            except Exception:
+                pass
 
     # ---------------------------------------------------------
     # Lectura y validacion
@@ -433,60 +456,293 @@ class LeontiefApp:
                 lines.append(f"\u23A2 {valstr} \u23A5")
         return lines
 
-    def _write_block(self, title, lines):
-        self.text_result.insert(tk.END, f"{title}\n", ("bold",))
-        for ln in lines:
-            self.text_result.insert(tk.END, ln + "\n")
-        self.text_result.insert(tk.END, "\n")
+    def _create_card(self, title, subtitle=None):
+        card = tk.Frame(
+            self.result_container,
+            bg=self.card_bg,
+            highlightbackground=self.card_border,
+            highlightthickness=1,
+            bd=0
+        )
+        card.pack(fill="x", pady=6)
+        header = tk.Frame(card, bg=self.card_bg)
+        header.pack(fill="x", padx=14, pady=(12, 6))
+        tk.Label(header, text=title, font=("Segoe UI", 13, "bold"),
+                 bg=self.card_bg, fg="#b91c1c").pack(anchor="w")
+        if subtitle:
+            tk.Label(
+                header,
+                text=subtitle,
+                font=("Segoe UI", 10),
+                bg=self.card_bg,
+                fg="#6b4557",
+                wraplength=900,
+                justify="left"
+            ).pack(anchor="w", pady=(2, 0))
+        body = tk.Frame(card, bg=self.card_bg)
+        body.pack(fill="x", padx=14, pady=(0, 12))
+        return card, body
+
+    def _render_lines_block(self, parent, lines, title=None):
+        box = tk.Frame(parent, bg="#ffffff", highlightbackground="#f3d1df", highlightthickness=1, bd=0)
+        box.pack(fill="x", pady=4)
+        if title:
+            tk.Label(box, text=title, font=("Segoe UI", 10, "bold"),
+                     bg="#ffffff", fg="#b91c1c").pack(anchor="w", padx=10, pady=(8, 2))
+        contenido = "\n".join(lines) if lines else "--"
+        tk.Label(
+            box,
+            text=contenido,
+            font=self.mono_font,
+            bg="#ffffff",
+            fg="#40263c",
+            justify="left",
+            anchor="w"
+        ).pack(fill="x", padx=10, pady=(0, 10))
+        return box
+
+    def _create_badge(self, parent, text, danger=False):
+        bg = "#ffe4e6" if danger else "#fce7f3"
+        fg = "#7f1d1d" if danger else "#b91c1c"
+        lbl = tk.Label(parent, text=text, font=("Segoe UI", 9, "bold"),
+                       bg=bg, fg=fg, padx=10, pady=4)
+        lbl.pack(side="left", padx=(0, 6), pady=(0, 4))
+        return lbl
+
+    def _render_step(self, parent, idx, step):
+        step_frame = tk.Frame(parent, bg="#ffffff", highlightbackground="#f3d1df", highlightthickness=1, bd=0)
+        step_frame.pack(fill="x", pady=6)
+        header = tk.Frame(step_frame, bg="#ffffff")
+        header.pack(fill="x", padx=10, pady=(10, 4))
+        tk.Label(header, text=f"Paso {idx}: {step['titulo']}", font=("Segoe UI", 11, "bold"),
+                 bg="#ffffff", fg="#b91c1c").pack(anchor="w")
+        if step.get("comentario"):
+            tk.Label(header, text=step["comentario"], font=("Segoe UI", 10),
+                     bg="#ffffff", fg="#6b4557").pack(anchor="w", pady=(2, 0))
+
+        content = tk.Frame(step_frame, bg="#ffffff")
+        content.pack(fill="x", padx=10, pady=(0, 10))
+
+        if step["oper_lines"]:
+            left = tk.Frame(content, bg="#fffafc", highlightbackground="#f5d9e8", highlightthickness=1, bd=0)
+            left.pack(side="left", fill="both", expand=True, padx=(0, 8))
+            tk.Label(left, text="Operaciones", font=("Segoe UI", 9, "bold"),
+                     bg="#fffafc", fg="#7f1d1d").pack(anchor="w", padx=8, pady=(8, 2))
+            tk.Label(
+                left,
+                text="\n".join(step["oper_lines"]),
+                font=("Consolas", 10),
+                bg="#fffafc",
+                fg="#40263c",
+                justify="left",
+                anchor="nw"
+            ).pack(fill="both", padx=8, pady=(0, 8))
+
+        right = tk.Frame(content, bg="#fffafc", highlightbackground="#f5d9e8", highlightthickness=1, bd=0)
+        right.pack(side="left", fill="both", expand=True)
+        tk.Label(right, text="Matriz", font=("Segoe UI", 9, "bold"),
+                 bg="#fffafc", fg="#7f1d1d").pack(anchor="w", padx=8, pady=(8, 2))
+        tk.Label(
+            right,
+            text="\n".join(step["matriz_lines"]),
+            font=self.mono_font,
+            bg="#fffafc",
+            fg="#40263c",
+            justify="left",
+            anchor="nw"
+        ).pack(fill="both", padx=8, pady=(0, 8))
+
+    def _build_grid_card(self, grid, row, col, title, lines, subtitle=None,
+                         button_text=None, button_textvar=None, button_command=None, colspan=1):
+        card = tk.Frame(
+            grid,
+            bg=self.card_bg,
+            highlightbackground=self.card_border,
+            highlightthickness=1,
+            bd=0
+        )
+        card.grid(row=row, column=col, columnspan=colspan, sticky="nsew", padx=6, pady=6)
+        header = tk.Frame(card, bg=self.card_bg)
+        header.pack(fill="x", padx=12, pady=(10, 4))
+        tk.Label(header, text=title, font=("Segoe UI", 12, "bold"),
+                 bg=self.card_bg, fg="#b91c1c").pack(side="left", anchor="w")
+        btn = None
+        if button_text or button_textvar:
+            btn = ttk.Button(
+                header,
+                text=button_text,
+                textvariable=button_textvar,
+                style="Ghost.TButton",
+                command=button_command
+            )
+            btn.pack(side="right", anchor="e")
+        if subtitle:
+            tk.Label(
+                card,
+                text=subtitle,
+                font=("Segoe UI", 9),
+                bg=self.card_bg,
+                fg="#6b4557",
+                wraplength=420,
+                justify="left"
+            ).pack(fill="x", padx=12, pady=(0, 6))
+        body = tk.Frame(card, bg=self.card_bg)
+        body.pack(fill="x", padx=12, pady=(0, 10))
+        self._render_lines_block(body, lines)
+        return card, body, btn
 
     def _mostrar_resultado(self, C, D, I, I_minus_C, A_inicial, pasos, soluciones, tipo):
-        self.text_result.configure(state="normal")
-        self.text_result.delete("1.0", tk.END)
+        self._clear_result_panel()
 
-        self.text_result.insert(tk.END, "MODELO DE LEONTIEF\n\n", ("title",))
-        self._write_block("Datos ingresados - C", self._matrix_to_lines(C))
-        self._write_block("Datos ingresados - D", self._vector_to_lines(D))
+        hero_card, hero_body = self._create_card(
+            "Modelo de Leontief",
+            "Tablero en grid con cada matriz importante y botones para ver procedimientos."
+        )
+        badges = tk.Frame(hero_body, bg=self.card_bg)
+        badges.pack(fill="x")
+        self._create_badge(badges, f"n = {self.n} x {self.n}")
+        self._create_badge(badges, f"Pasos Gauss-Jordan: {len(pasos)}")
+        estado_texto = {
+            "determinado": "Sistema determinado",
+            "indeterminado": "Sistema con variables libres",
+            "incompatible": "Sistema incompatible"
+        }.get(tipo, "Estado del sistema")
+        self._create_badge(badges, estado_texto, danger=(tipo == "incompatible"))
 
-        self._write_block("Matriz identidad I", self._matrix_to_lines(I))
-        self._write_block("Matriz (I - C)", self._matrix_to_lines(I_minus_C))
+        grid_wrap = tk.Frame(self.result_container, bg=self.panel_bg)
+        grid_wrap.pack(fill="x", pady=(4, 10))
+        columns = 2
+        for c in range(columns):
+            grid_wrap.columnconfigure(c, weight=1)
 
-        self.text_result.insert(tk.END, "Sistema (I - C) * X = D\n\n", ("bold",))
-        self._write_block("Matriz aumentada (I - C | D)", self._format_matriz_lines(A_inicial))
+        self._build_grid_card(
+            grid_wrap, 0, 0,
+            "Matriz de consumo C",
+            self._matrix_to_lines(C),
+            "Valores ingresados para C."
+        )
+        self._build_grid_card(
+            grid_wrap, 0, 1,
+            "Demanda final D",
+            self._vector_to_lines(D),
+            "Vector ingresado para D."
+        )
+        self._build_grid_card(
+            grid_wrap, 1, 0,
+            "Identidad I",
+            self._matrix_to_lines(I),
+            "Base para calcular (I - C)."
+        )
+
+        toggle_text = tk.StringVar(value="Procedimiento")
+        ic_card, ic_body, ic_btn = self._build_grid_card(
+            grid_wrap, 1, 1,
+            "Resultado (I - C)",
+            self._matrix_to_lines(I_minus_C),
+            "Resta elemento a elemento entre I y C.",
+            button_textvar=toggle_text
+        )
+        detalle_ic = tk.Frame(ic_body, bg=self.card_bg)
+        detalle_ic.pack_forget()
+
+        def toggle_ic():
+            if detalle_ic.winfo_manager():
+                detalle_ic.pack_forget()
+                toggle_text.set("Procedimiento")
+            else:
+                detalle_ic.pack(fill="x", pady=(10, 0))
+                toggle_text.set("Ocultar")
+
+        if ic_btn:
+            ic_btn.configure(command=toggle_ic)
+
+        tk.Label(
+            detalle_ic,
+            text="Detalle de la resta I - C (mismas dimensiones, elemento a elemento).",
+            font=("Segoe UI", 10),
+            bg=self.card_bg,
+            fg="#6b4557",
+            wraplength=420,
+            justify="left"
+        ).pack(anchor="w", pady=(0, 6))
+        det_grid = tk.Frame(detalle_ic, bg=self.card_bg)
+        det_grid.pack(fill="x", pady=(0, 6))
+        det_grid.columnconfigure(0, weight=1)
+        det_grid.columnconfigure(1, weight=1)
+        left_i = tk.Frame(det_grid, bg=self.card_bg)
+        left_i.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
+        right_c = tk.Frame(det_grid, bg=self.card_bg)
+        right_c.grid(row=0, column=1, sticky="nsew", padx=(6, 0))
+        self._render_lines_block(left_i, self._matrix_to_lines(I), title="Identidad I")
+        self._render_lines_block(right_c, self._matrix_to_lines(C), title="Consumo C")
+        self._render_lines_block(detalle_ic, self._matrix_to_lines(I_minus_C), title="Resultado (I - C)")
+
+        self._build_grid_card(
+            grid_wrap, 2, 0,
+            "Matriz aumentada (I - C | D)",
+            self._format_matriz_lines(A_inicial),
+            "Punto de partida para Gauss-Jordan."
+        )
+        self._build_grid_card(
+            grid_wrap, 2, 1,
+            "Matriz reducida (I - C | X)",
+            self._format_matriz_lines(self.matriz_final),
+            "Resultado final despues de Gauss-Jordan."
+        )
+
+        sol_card, sol_body, _ = self._build_grid_card(
+            grid_wrap, 3, 0,
+            "Vector de produccion total X",
+            self._vector_to_lines(soluciones) if soluciones else ["--"],
+            "Solucion del sistema (o forma parametrica).",
+            colspan=2
+        )
+        if tipo == "incompatible" or soluciones is None:
+            for child in sol_body.winfo_children():
+                child.destroy()
+            tk.Label(
+                sol_body,
+                text="El sistema es incompatible: no existe produccion que cumpla con D.",
+                font=("Segoe UI", 11, "bold"),
+                bg=self.card_bg,
+                fg="#b91c1c",
+                wraplength=420,
+                justify="left"
+            ).pack(anchor="w", pady=(0, 6))
+        elif tipo == "indeterminado":
+            tk.Label(
+                sol_body,
+                text="El sistema tiene infinitas soluciones; se muestra una forma parametrica.",
+                font=("Segoe UI", 9, "bold"),
+                bg=self.card_bg,
+                fg="#7f1d1d",
+                wraplength=420,
+                justify="left"
+            ).pack(anchor="w", pady=(0, 6))
 
         if pasos:
-            self.text_result.insert(tk.END, "Aplicando Gauss-Jordan:\n\n", ("bold",))
+            steps_card, steps_body = self._create_card(
+                "Procedimiento Gauss-Jordan",
+                "Despliega los pasos si quieres ver el detalle completo."
+            )
+            steps_container = tk.Frame(steps_body, bg=self.card_bg)
+            steps_container.pack_forget()
+            toggle_steps_text = tk.StringVar(value="Ver pasos")
+
+            def toggle_steps():
+                if steps_container.winfo_manager():
+                    steps_container.pack_forget()
+                    toggle_steps_text.set("Ver pasos")
+                else:
+                    steps_container.pack(fill="x", pady=(4, 0))
+                    toggle_steps_text.set("Ocultar pasos")
+
+            ttk.Button(
+                steps_body,
+                textvariable=toggle_steps_text,
+                style="Ghost.TButton",
+                command=toggle_steps
+            ).pack(anchor="w", pady=(0, 6))
+
             for idx, step in enumerate(pasos, start=1):
-                self.text_result.insert(tk.END, f"Paso {idx}: {step['titulo']}\n", ("bold",))
-                if step.get("comentario"):
-                    self.text_result.insert(tk.END, step["comentario"] + "\n")
-                oper_lines = step["oper_lines"]
-                matriz_lines = step["matriz_lines"]
-                max_left = max((len(s) for s in oper_lines), default=0)
-                sep = "   |   "
-                max_len = max(len(oper_lines), len(matriz_lines))
-                for i in range(max_len):
-                    left = oper_lines[i] if i < len(oper_lines) else ""
-                    right = matriz_lines[i] if i < len(matriz_lines) else ""
-                    line_text = left.ljust(max_left) + (sep if right else "") + right + "\n"
-                    self.text_result.insert(tk.END, line_text)
-                self.text_result.insert(tk.END, "\n" + "-" * 110 + "\n\n")
-
-        self._write_block("Matriz reducida (I - C | X)", self._format_matriz_lines(self.matriz_final))
-
-        if tipo == "incompatible" or soluciones is None:
-            self.text_result.insert(tk.END, "El sistema es incompatible: no existe produccion que cumpla con D.\n",
-                                    ("bold",))
-        else:
-            if tipo == "indeterminado":
-                self.text_result.insert(
-                    tk.END,
-                    "El sistema tiene infinitas soluciones; se muestra una forma parametrica.\n\n",
-                    ("bold",)
-                )
-            self._write_block("Vector de produccion total X", self._vector_to_lines(soluciones))
-
-        self.text_result.configure(state="disabled")
-
-
-
-
+                self._render_step(steps_container, idx, step)
