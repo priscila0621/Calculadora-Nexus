@@ -2107,7 +2107,7 @@ class InversaMatrizWindow(_BaseMatrixWindow):
         self.entries = []
         g = QGridLayout(); g.setHorizontalSpacing(6); g.setVerticalSpacing(6)
         box = QFrame(); box.setLayout(g)
-        self.grid.addWidget(QLabel("Matriz A (nÃ—n)"), 0, 0, alignment=Qt.AlignHCenter)
+        self.grid.addWidget(QLabel("Matriz A"), 0, 0, alignment=Qt.AlignHCenter)
         self.grid.addWidget(box, 1, 0)
         for i in range(n):
             row = []
@@ -2534,6 +2534,7 @@ class InversaMatrizWindow(_BaseMatrixWindow):
         self.result_box.insertPlainText("\nConclusión: La matriz es invertible porque:\n")
         for l in explain_cde(Aw):
             self.result_box.insertPlainText(l + "\n")
+
 
 
 
