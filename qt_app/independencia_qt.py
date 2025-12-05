@@ -39,10 +39,12 @@ class IndependenciaWindow(QMainWindow):
         cfg.addStretch(1)
 
         self.scroll = QScrollArea(); self.scroll.setWidgetResizable(True)
-        lay.addWidget(self.scroll, 1)
+        self.scroll.setAlignment(Qt.AlignTop)
+        lay.addWidget(self.scroll)
         self.gridw = QWidget(); self.grid = QGridLayout(self.gridw)
         self.grid.setContentsMargins(0, 0, 0, 0)
         self.grid.setHorizontalSpacing(8); self.grid.setVerticalSpacing(4)
+        self.grid.setAlignment(Qt.AlignTop)
         self.scroll.setWidget(self.gridw)
 
         btns = QHBoxLayout(); lay.addLayout(btns)
