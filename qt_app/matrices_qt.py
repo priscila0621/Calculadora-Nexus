@@ -2082,6 +2082,9 @@ class InversaMatrizWindow(_BaseMatrixWindow):
             if w: w.setParent(None)
         n = int(self.f_edit.text())
         self.c_edit.setText(str(n))
+        # Ajusta el área de entrada al tamaño real de la matriz para evitar espacios vacíos.
+        self._update_input_scroll_from_cols(n)
+        self._update_input_min_height(n)
         self.entries = []
         g = QGridLayout(); g.setHorizontalSpacing(6); g.setVerticalSpacing(6)
         box = QFrame(); box.setLayout(g)
