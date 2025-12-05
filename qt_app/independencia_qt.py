@@ -41,7 +41,8 @@ class IndependenciaWindow(QMainWindow):
         self.scroll = QScrollArea(); self.scroll.setWidgetResizable(True)
         lay.addWidget(self.scroll, 1)
         self.gridw = QWidget(); self.grid = QGridLayout(self.gridw)
-        self.grid.setHorizontalSpacing(8); self.grid.setVerticalSpacing(8)
+        self.grid.setContentsMargins(0, 0, 0, 0)
+        self.grid.setHorizontalSpacing(8); self.grid.setVerticalSpacing(4)
         self.scroll.setWidget(self.gridw)
 
         btns = QHBoxLayout(); lay.addLayout(btns)
@@ -90,7 +91,8 @@ class IndependenciaWindow(QMainWindow):
             if w: w.setParent(None)
         self.entries = []
         for j in range(c):
-            h = QLabel(f"v{j+1}"); h.setAlignment(Qt.AlignCenter); self.grid.addWidget(h, 0, j)
+            h = QLabel(f"v{j+1}"); h.setAlignment(Qt.AlignCenter)
+            self.grid.addWidget(h, 0, j, alignment=Qt.AlignHCenter | Qt.AlignBottom)
         for i in range(f):
             row = []
             for j in range(c):
