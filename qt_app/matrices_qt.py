@@ -1919,7 +1919,24 @@ class DeterminanteMatrizWindow(_BaseMatrixWindow):
             self.lay.removeWidget(self.result_container)
             self.result_box.setMinimumHeight(200)
             self.actions_layout.setSpacing(6)
+            # Badge para mostrar el determinante destacado bajo el botón
+            self.det_badge = QLabel("Determinante = -")
+            self.det_badge.setAlignment(Qt.AlignCenter)
+            self.det_badge.setStyleSheet(
+                """
+                QLabel {
+                    background: rgba(178, 118, 143, 0.14);
+                    color: #7a2e4d;
+                    border: 1px solid rgba(178, 118, 143, 0.35);
+                    border-radius: 10px;
+                    padding: 10px 14px;
+                    font-weight: 700;
+                    letter-spacing: 0.3px;
+                }
+                """
+            )
             self.actions_layout.addWidget(self.result_container)
+            self.actions_layout.addWidget(self.det_badge, 0, Qt.AlignTop)
             self.actions_layout.addStretch(1)
         except Exception:
             pass
@@ -1940,6 +1957,10 @@ class DeterminanteMatrizWindow(_BaseMatrixWindow):
     def _run(self):
         A = self._leer()
         det, steps = determinante_con_pasos_ascii(A)
+        try:
+            self.det_badge.setText(f"Determinante = {det}")
+        except Exception:
+            pass
         self.result_box.clear()
         self.result_box.insertPlainText("Pasos detallados\n\n")
         for s in steps:
