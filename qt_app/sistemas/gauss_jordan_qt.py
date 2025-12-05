@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import (
+﻿from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QScrollArea, QGridLayout, QLineEdit, QTextEdit, QMessageBox, QFrame,
     QDialog, QDialogButtonBox, QPlainTextEdit, QSlider, QToolButton, QMenu
@@ -21,7 +21,7 @@ def _fmt(x):
 class GaussJordanWindow(QMainWindow):
     def __init__(self, parent=None, start_with_independencia=False):
         super().__init__(parent)
-        self.setWindowTitle("Método de Eliminación de Gauss-Jordan")
+        self.setWindowTitle("MÃ©todo de EliminaciÃ³n de Gauss-Jordan")
         self._entries = []
         self._rows = 3
         self._cols_no_b = 3
@@ -107,7 +107,7 @@ class GaussJordanWindow(QMainWindow):
         self.btn_limpiar = QPushButton("Limpiar pantalla")
         self.btn_limpiar.clicked.connect(self._limpiar)
         top.addWidget(self.btn_limpiar)
-        # nueva opción: ingreso por ecuaciones (texto)
+        # nueva opciÃ³n: ingreso por ecuaciones (texto)
         self.btn_ingresar_ecuaciones = QPushButton("Ingresar ecuaciones")
         self.btn_ingresar_ecuaciones.clicked.connect(self._open_ecuaciones_dialog)
         top.addWidget(self.btn_ingresar_ecuaciones)
@@ -237,12 +237,12 @@ class GaussJordanWindow(QMainWindow):
         self._cols_no_b = value
         self._rebuild_grid(self._rows, self._cols_no_b + 1)
 
-    # --- ingreso por ecuaciones (nuevo): abrir diálogo y parsear ---
+    # --- ingreso por ecuaciones (nuevo): abrir diÃ¡logo y parsear ---
     def _open_ecuaciones_dialog(self):
         dlg = QDialog(self)
         dlg.setWindowTitle("Ingresar ecuaciones")
         lay = QVBoxLayout(dlg)
-        info = QLabel("Ingrese una ecuación por línea. Ejemplo: 2x + 3y = 5\nUse variables como x, y, z o x1, x2...")
+        info = QLabel("Ingrese una ecuaciÃ³n por lÃ­nea. Ejemplo: 2x + 3y = 5\nUse variables como x, y, z o x1, x2...")
         info.setWordWrap(True)
         lay.addWidget(info)
         editor = QPlainTextEdit()
@@ -256,18 +256,18 @@ class GaussJordanWindow(QMainWindow):
             return
         text = editor.toPlainText().strip()
         if not text:
-            QMessageBox.information(self, "Vacío", "No ingresaste ecuaciones.")
+            QMessageBox.information(self, "VacÃ­o", "No ingresaste ecuaciones.")
             return
         try:
             M = self._parse_equations_text(text)
         except Exception as exc:
             QMessageBox.critical(self, "Error de parseo", f"No se pudieron interpretar las ecuaciones: {exc}")
             return
-        # aplicar la matriz aumentada a la cuadrícula (ajustar tamaño)
+        # aplicar la matriz aumentada a la cuadrÃ­cula (ajustar tamaÃ±o)
         filas = len(M)
         columnas = len(M[0]) if filas else 0
         if filas == 0:
-            QMessageBox.warning(self, "Error", "No se detectaron ecuaciones válidas.")
+            QMessageBox.warning(self, "Error", "No se detectaron ecuaciones vÃ¡lidas.")
             return
         # reconstruir y llenar
         self._rows = filas
@@ -503,10 +503,10 @@ class GaussJordanWindow(QMainWindow):
             self._mostrar_resumen()
             self.detalle_button.setEnabled(True)
         except Exception as exc:
-            QMessageBox.critical(self, "Error", f"Entrada inválida: {exc}")
+            QMessageBox.critical(self, "Error", f"Entrada invÃ¡lida: {exc}")
 
     def _insert_header(self, titulo: str, comentario: str = ""):
-        self.result.insertPlainText("Operación: ")
+        self.result.insertPlainText("OperaciÃ³n: ")
         self.result.insertPlainText(titulo)
         if comentario:
             self.result.insertPlainText("  \u2014  ")
@@ -528,14 +528,21 @@ class GaussJordanWindow(QMainWindow):
                 line_text = left.ljust(max_left) + (sep if right else "") + right
                 self.result.insertPlainText(line_text + "\n")
             self.result.insertPlainText("\n" + ("-" * 110) + "\n\n")
-        self.result.insertPlainText("===== SOLUCIÓN FINAL =====\n")
+        self.result.insertPlainText("===== SOLUCION FINAL =====\n")
+        if self.matriz_final is None:
+            self.result.insertPlainText("(no hay soluciones calculadas)\n")
+            return
         soluciones, tipo, _ = _extraer_soluciones(self.matriz_final)
+        if soluciones is None:
+            self.result.insertPlainText("El sistema es inconsistente: no tiene soluciones.\n")
+            return
         for i, val in enumerate(soluciones):
             self.result.insertPlainText(f"x{i+1} = {val}\n")
 
+
     def _mostrar_resumen(self):
         self.result.clear()
-        self.result.insertPlainText("===== SOLUCIÓN FINAL =====\n")
+        self.result.insertPlainText("===== SOLUCION FINAL =====\n")
         if self.matriz_final is None:
             self.result.insertPlainText("(no hay soluciones calculadas)\n")
             return
@@ -566,7 +573,7 @@ class GaussJordanWindow(QMainWindow):
                 inter_desc += "Si. Comparten infinitos puntos en comun."
             self.result.insertPlainText(inter_desc + "\n\n")
             if free_cols:
-                self.result.insertPlainText("\nConjunto solución:\n\n")
+                self.result.insertPlainText("\nConjunto solucion:\n\n")
                 num_vars = len(soluciones)
                 # Vector particular (libres = 0)
                 particular = []
@@ -596,7 +603,7 @@ class GaussJordanWindow(QMainWindow):
 
                 lines = vectores_columna_lado_a_lado(vectores, nombres, espacio_entre_vectores=4)
                 imprimir_vectores_con_x_igual(self.result, lines)
-                self.result.insertPlainText("\nDonde " + ", ".join([f"x{l+1}" for l in free_cols]) + " ∈ ℝ (parámetros libres).\n")
+                self.result.insertPlainText("\nDonde " + ", ".join([f"x{l+1}" for l in free_cols]) + " pertenecen a R (parametros libres).\n")
 
     def _toggle_detalles(self):
         if not self.pasos_guardados:
@@ -610,7 +617,7 @@ class GaussJordanWindow(QMainWindow):
             self.detalle_button.setText("Ocultar pasos detallados")
             self.mostrando_detalles = True
 
-    # _verificar_independencia retirado a petición del usuario
+    # _verificar_independencia retirado a peticiÃ³n del usuario
 
     def _go_back(self):
         try:
@@ -650,7 +657,7 @@ def gauss_jordan(A, n, m):
             A[fila_pivote] = [val / divisor for val in A[fila_pivote]]
             pasos.append({
                 "titulo": f"F{fila_pivote+1} \u2192 F{fila_pivote+1}/{_fmt(divisor)}",
-                "comentario": f"Normalización: se convierte en pivote a 1 en la columna {col+1}",
+                "comentario": f"NormalizaciÃ³n: se convierte en pivote a 1 en la columna {col+1}",
                 "oper_lines": [],
                 "matriz_lines": format_matriz_lines(A)
             })
@@ -708,7 +715,7 @@ def format_matriz_lines(A):
     return lines
 
 
-# Helpers para análisis de RREF y forma vectorial
+# Helpers para anÃ¡lisis de RREF y forma vectorial
 def _analizar_rref(A):
     n = len(A); m = len(A[0]); num_vars = m - 1
     piv_col_por_fila = [-1] * n
@@ -726,7 +733,7 @@ def _analizar_rref(A):
 
 def _extraer_soluciones(A):
     n = len(A); m = len(A[0]); num_vars = m - 1
-    # Incompatibilidad: [0 ... 0 | b≠0]
+    # Incompatibilidad: [0 ... 0 | bâ‰ 0]
     for i in range(n):
         if all(A[i][j] == 0 for j in range(num_vars)) and A[i][-1] != 0:
             return None, "incompatible", ([], [], {})
@@ -774,11 +781,11 @@ def vectores_columna_lado_a_lado(vectores, nombres, espacio_entre_vectores=4):
         for idx, v in enumerate(vectores):
             valstr = str(v[fila]).rjust(max_num_len)
             if fila == 0:
-                li, ri = "\u23A1", "\u23A4"  # ⎡ ⎤
+                li, ri = "\u23A1", "\u23A4"  # âŽ¡ âŽ¤
             elif fila == n - 1:
-                li, ri = "\u23A3", "\u23A6"  # ⎣ ⎦
+                li, ri = "\u23A3", "\u23A6"  # âŽ£ âŽ¦
             else:
-                li, ri = "\u23A2", "\u23A5"  # ⎢ ⎥
+                li, ri = "\u23A2", "\u23A5"  # âŽ¢ âŽ¥
             if fila == 0:
                 encabezado = encabezados[idx].rjust(max_encabezado)
                 bloque = f"{encabezado} {li} {valstr} {ri}"
@@ -805,6 +812,8 @@ def imprimir_vectores_con_x_igual(editor: QTextEdit, lines):
             editor.insertPlainText(" " * x_pos + x_eq + " " + l + "\n")
         else:
             editor.insertPlainText(" " * (x_pos + len(x_eq) + 1) + l + "\n")
+
+
 
 
 
