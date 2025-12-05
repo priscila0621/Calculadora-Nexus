@@ -2059,6 +2059,20 @@ class InversaMatrizWindow(_BaseMatrixWindow):
             self.matrix_expand_btn.setVisible(False)
         except Exception:
             pass
+        try:
+            self.result_matrix_block.setVisible(False)
+            self.result_matrix_block.setMaximumHeight(0)
+        except Exception:
+            pass
+        try:
+            self.result_box.setMinimumHeight(260)
+        except Exception:
+            pass
+        try:
+            self.lay.setStretch(self.lay.indexOf(self.result_container), 2)
+            self.lay.setStretch(self.lay.indexOf(self.result_matrix_block), 0)
+        except Exception:
+            pass
         # Añadir selección de método y opción de animar
         method_row = QHBoxLayout()
         method_row.addWidget(QLabel("Método:"))
