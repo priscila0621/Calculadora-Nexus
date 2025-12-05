@@ -12,8 +12,10 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QTextEdit,
     QMessageBox,
+    QToolButton,
+    QMenu,
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QTextCursor
 from fractions import Fraction
 from copy import deepcopy
@@ -25,6 +27,8 @@ from .gauss_jordan_qt import (
     vectores_columna_lado_a_lado,
     imprimir_vectores_con_x_igual,
 )
+from ..theme import bind_theme_icon, make_overflow_icon, gear_icon_preferred
+from ..settings_qt import open_settings_dialog
 
 
 class LeontiefWindow(QMainWindow):
@@ -77,6 +81,24 @@ class LeontiefWindow(QMainWindow):
         top.addWidget(self.btn_limpiar)
 
         top.addStretch(1)
+        more_btn = QToolButton()
+        more_btn.setAutoRaise(True)
+        more_btn.setCursor(Qt.PointingHandCursor)
+        more_btn.setToolTip("Más opciones")
+        more_btn.setPopupMode(QToolButton.InstantPopup)
+        try:
+            bind_theme_icon(more_btn, make_overflow_icon, 20)
+            more_btn.setIconSize(QSize(20, 20))
+        except Exception:
+            pass
+        menu = QMenu(more_btn)
+        try:
+            act_settings = menu.addAction(gear_icon_preferred(22), "Configuración")
+        except Exception:
+            act_settings = menu.addAction("Configuración")
+        act_settings.triggered.connect(self._open_settings)
+        more_btn.setMenu(menu)
+        top.addWidget(more_btn, 0, Qt.AlignRight)
 
         body = QHBoxLayout()
         body.setSpacing(14)
@@ -155,6 +177,12 @@ class LeontiefWindow(QMainWindow):
         self._render_grids(0)
         self.txt.clear()
         self.btn_resolver.setEnabled(False)
+
+    def _open_settings(self):
+        try:
+            open_settings_dialog(self)
+        except Exception as exc:
+            QMessageBox.critical(self, "Error", f"No se pudo abrir configuración: {exc}")
 
     def crear_tablas(self):
         n = int(self.spin_n.value())
