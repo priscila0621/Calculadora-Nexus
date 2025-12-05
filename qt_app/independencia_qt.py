@@ -45,9 +45,12 @@ class IndependenciaWindow(QMainWindow):
         self.scroll.setWidget(self.gridw)
 
         btns = QHBoxLayout(); lay.addLayout(btns)
-        self.btn_check = QPushButton("Verificar independencia")
-        self.btn_check.clicked.connect(self._verificar)
-        btns.addWidget(self.btn_check)
+        self.btn_check_cols = QPushButton("Verificar columnas")
+        self.btn_check_cols.clicked.connect(lambda: self._verificar("columna"))
+        btns.addWidget(self.btn_check_cols)
+        self.btn_check_rows = QPushButton("Verificar filas")
+        self.btn_check_rows.clicked.connect(lambda: self._verificar("fila"))
+        btns.addWidget(self.btn_check_rows)
         btns.addStretch(1)
 
         self.out = QTextEdit(); self.out.setReadOnly(True)
@@ -80,8 +83,8 @@ class IndependenciaWindow(QMainWindow):
                 row.append(e)
             self.entries.append(row)
 
-    def _verificar(self):
-        # Construye vectores columna y delega al método existente para el texto
+    def _verificar(self, orientacion="columna"):
+        # Construye vectores (columna o fila) y delega al método existente para el texto
         try:
             f = len(self.entries)
             c = len(self.entries[0]) if f else 0
@@ -92,8 +95,11 @@ class IndependenciaWindow(QMainWindow):
                     s = (self.entries[i][j].text() or "0").strip()
                     fila.append(float(Fraction(s)))
                 matriz.append(fila)
-            columnas = [[matriz[i][j] for i in range(f)] for j in range(c)]
-            ok, texto = son_linealmente_independientes(columnas)
+            if orientacion == "fila":
+                vectores = [fila for fila in matriz]
+            else:
+                vectores = [[matriz[i][j] for i in range(f)] for j in range(c)]
+            ok, texto = son_linealmente_independientes(vectores)
             self.out.clear()
             self.out.insertPlainText(texto)
         except Exception as exc:

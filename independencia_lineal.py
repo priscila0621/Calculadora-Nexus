@@ -389,7 +389,12 @@ class IndependenciaLinealApp:
 
         abajo = ttk.Frame(frame, style="TFrame")
         abajo.pack(pady=5)
-        ttk.Button(abajo, text="Verificar independencia", style="Primary.TButton", command=self.verificar).pack(side="left", padx=10)
+        botones_frame = ttk.Frame(abajo, style="TFrame")
+        botones_frame.pack(side="left", padx=10)
+        ttk.Button(botones_frame, text="Vectores columna", style="Primary.TButton",
+                   command=lambda: self.verificar("columna")).pack(fill="x", pady=2)
+        ttk.Button(botones_frame, text="Vectores fila", style="Primary.TButton",
+                   command=lambda: self.verificar("fila")).pack(fill="x", pady=2)
         self.resultado = tk.Text(abajo, width=70, height=20, state="disabled", font=("Consolas", 11),
                                  bg="#fff0f6", fg="black", wrap="word")
         self.resultado.pack(side="left", padx=10)
@@ -417,7 +422,7 @@ class IndependenciaLinealApp:
             self.entradas.append(col)
 
 
-    def verificar(self):
+    def verificar(self, orientacion="columna"):
         try:
             vectores = []
             for col in self.entradas:
@@ -428,11 +433,24 @@ class IndependenciaLinealApp:
             return
 
 
+        if not vectores:
+            messagebox.showerror("Error", "Ingresa al menos un vector.")
+            return
+
+        if orientacion == "fila":
+            # Tomamos cada fila ingresada como vector fila.
+            vectores = [list(fila) for fila in zip(*vectores)]
+
+
         independiente, justificacion = son_linealmente_independientes(vectores)
 
 
         self.resultado.configure(state="normal")
         self.resultado.delete("1.0", tk.END)
+        if orientacion == "fila":
+            self.resultado.insert(tk.END, "Modo: vectores fila (se toman las filas como vectores).\n\n")
+        else:
+            self.resultado.insert(tk.END, "Modo: vectores columna (se toman las columnas como vectores).\n\n")
         self.resultado.insert(tk.END, justificacion)
         self.resultado.configure(state="disabled")
 
