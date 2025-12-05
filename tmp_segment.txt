@@ -1,0 +1,11 @@
+class InversaMatrizWindow(_BaseMatrixWindow):
+    def __init__(self, parent=None):
+        super().__init__("Inversa de Matriz", parent)
+        # Añadir selección de método y opción de animar
+        method_row = QHBoxLayout()
+        method_row.addWidget(QLabel("Método:"))
+        self.rb_adj = QRadioButton("Adjunta (1×1,2×2,3×3)")
+        self.rb_gj = QRadioButton("Gauss-Jordan")
+        self.rb_adj.setChecked(True)
+        method_row.addWidget(self.rb_adj)
+        method_row.addWid

@@ -2054,6 +2054,11 @@ def determinante_con_pasos_ascii(matrix, level: int = 0):
 class InversaMatrizWindow(_BaseMatrixWindow):
     def __init__(self, parent=None):
         super().__init__("Inversa de Matriz", parent)
+        # En esta vista no se necesita el botón de abrir matriz resultante.
+        try:
+            self.matrix_expand_btn.setVisible(False)
+        except Exception:
+            pass
         # Añadir selección de método y opción de animar
         method_row = QHBoxLayout()
         method_row.addWidget(QLabel("Método:"))
@@ -2515,6 +2520,7 @@ class InversaMatrizWindow(_BaseMatrixWindow):
         self.result_box.insertPlainText("\nConclusión: La matriz es invertible porque:\n")
         for l in explain_cde(Aw):
             self.result_box.insertPlainText(l + "\n")
+
 
 
 
