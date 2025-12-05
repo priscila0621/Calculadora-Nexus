@@ -53,6 +53,22 @@ class IndependenciaWindow(QMainWindow):
         btns.addWidget(self.btn_check_rows)
         btns.addStretch(1)
 
+        self.status_label = QLabel("")
+        self.status_label.setAlignment(Qt.AlignCenter)
+        self.status_label.setVisible(False)
+        self.status_label.setStyleSheet(
+            """
+            QLabel {
+                border-radius: 10px;
+                padding: 12px;
+                font-weight: 700;
+                color: #ffffff;
+                background: #9ca3af;
+            }
+            """
+        )
+        lay.addWidget(self.status_label)
+
         self.out = QTextEdit(); self.out.setReadOnly(True)
         bind_font_scale_stylesheet(
             self.out,
@@ -100,6 +116,37 @@ class IndependenciaWindow(QMainWindow):
             else:
                 vectores = [[matriz[i][j] for i in range(f)] for j in range(c)]
             ok, texto = son_linealmente_independientes(vectores)
+
+            if ok:
+                self.status_label.setText("Linealmente INDEPENDIENTE")
+                self.status_label.setStyleSheet(
+                    """
+                    QLabel {
+                        border-radius: 10px;
+                        padding: 12px;
+                        font-weight: 700;
+                        color: #ffffff;
+                        background: #b2768f;
+                        letter-spacing: 0.5px;
+                    }
+                    """
+                )
+            else:
+                self.status_label.setText("Linealmente DEPENDIENTE")
+                self.status_label.setStyleSheet(
+                    """
+                    QLabel {
+                        border-radius: 10px;
+                        padding: 12px;
+                        font-weight: 700;
+                        color: #ffffff;
+                        background: #d08da7;
+                        letter-spacing: 0.5px;
+                    }
+                    """
+                )
+            self.status_label.setVisible(True)
+
             self.out.clear()
             self.out.insertPlainText(texto)
         except Exception as exc:
