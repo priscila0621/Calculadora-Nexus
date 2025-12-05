@@ -329,6 +329,11 @@ class GaussWindow(QMainWindow):
             self.result.insertPlainText("Sistema de ecuaciones ingresado:\n")
             for ln in self._formatear_sistema_ecuaciones(self.matriz_original):
                 self.result.insertPlainText(ln + "\n")
+            vec_lines = self._formatear_vectorial(self.matriz_original)
+            if vec_lines:
+                self.result.insertPlainText("\nForma vectorial equivalente:\n")
+                for ln in vec_lines:
+                    self.result.insertPlainText(ln + "\n")
             self.result.insertPlainText("\n")
 
         if self.matriz_triangular:
@@ -721,6 +726,46 @@ class GaussWindow(QMainWindow):
             lines.append(f"{left} = {right}")
         return lines
 
+    def _formatear_vectorial(self, A_aug):
+        """Devuelve la forma vectorial por columnas: sum(xj * columna_j) = b."""
+        if not A_aug:
+            return []
+        n = len(A_aug)
+        m = len(A_aug[0])
+        num_vars = max(0, m - 1)
+        if num_vars == 0:
+            return []
+
+        # Preparar columnas de coeficientes y del vector b
+        cols = [[A_aug[i][j] for i in range(n)] for j in range(num_vars)]
+        b_col = [A_aug[i][-1] for i in range(n)] if m > 0 else [0] * n
+
+        # Anchos para alinear
+        coef_ancho = max((len(str(v)) for col in cols for v in col), default=1)
+        b_ancho = max((len(str(v)) for v in b_col), default=1)
+        var_names = [f"x{j+1}" for j in range(num_vars)]
+        var_ancho = max((len(v) for v in var_names), default=1)
+
+        def col_block(values, width):
+            lines = []
+            for v in values:
+                lines.append(f"[ {str(v).rjust(width)} ]")
+            return lines
+
+        col_lines = [col_block(col, coef_ancho) for col in cols]
+        b_lines = col_block(b_col, b_ancho)
+
+        # Combinar en expresion fila a fila
+        lines = []
+        for i in range(n):
+            parts = []
+            for idx, block in enumerate(col_lines):
+                label = var_names[idx] if i == 0 else " " * var_ancho
+                parts.append(f"{label} {block[i]}")
+            left = " + ".join(parts)
+            lines.append(f"{left} = {b_lines[i]}")
+        return lines
+
     def vectores_columna_lado_a_lado(self, vectores, nombres, espacio_entre_vectores=4):
         if not vectores:
             return []
@@ -792,6 +837,11 @@ class GaussWindow(QMainWindow):
                 self.result.append("Vista previa del sistema:\n")
                 for ln in lines:
                     self.result.append(ln)
+                vec_lines = self._formatear_vectorial(A_aug)
+                if vec_lines:
+                    self.result.append("\nForma vectorial equivalente:")
+                    for ln in vec_lines:
+                        self.result.append(ln)
         except Exception:
             pass
 

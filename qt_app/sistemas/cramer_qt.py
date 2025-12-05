@@ -494,6 +494,40 @@ class CramerWindow(QMainWindow):
             A.append(vals)
         return A
 
+    def _formatear_vectorial(self, A_aug):
+        """Forma vectorial por columnas: sum(xj * columna_j) = b."""
+        if not A_aug:
+            return []
+        n = len(A_aug)
+        m = len(A_aug[0])
+        num_vars = max(0, m - 1)
+        if num_vars == 0:
+            return []
+
+        cols = [[A_aug[i][j] for i in range(n)] for j in range(num_vars)]
+        b_col = [A_aug[i][-1] for i in range(n)] if m > 0 else [0] * n
+
+        coef_ancho = max((len(str(v)) for col in cols for v in col), default=1)
+        b_ancho = max((len(str(v)) for v in b_col), default=1)
+        var_names = [f"x{j+1}" for j in range(num_vars)]
+        var_ancho = max((len(v) for v in var_names), default=1)
+
+        def col_block(values, width):
+            return [f"[ {str(v).rjust(width)} ]" for v in values]
+
+        col_lines = [col_block(col, coef_ancho) for col in cols]
+        b_lines = col_block(b_col, b_ancho)
+
+        lines = []
+        for i in range(n):
+            parts = []
+            for idx, block in enumerate(col_lines):
+                label = var_names[idx] if i == 0 else " " * var_ancho
+                parts.append(f"{label} {block[i]}")
+            left = " + ".join(parts)
+            lines.append(f"{left} = {b_lines[i]}")
+        return lines
+
     def _preview_sistema(self):
         # Construye y muestra el sistema mientras se ingresa la matriz
         try:
@@ -532,18 +566,20 @@ class CramerWindow(QMainWindow):
                 left = " ".join(parts) if parts else "0"
                 right = _fmt_fraction(A_aug[i][-1]) if m>0 else "0"
                 lines.append(f"{left} = {right}")
+            vec_lines = self._formatear_vectorial(A_aug)
             mono_pre = scaled_font_px(13)
             html = (
                 "<div style='font-family:Segoe UI;'>"
                 "<div style='font-weight:700;margin-bottom:4px;'>Sistema de ecuaciones ingresado:</div>"
                 f"<pre style='font-family:Consolas,monospace;font-size:{mono_pre}px;margin:0;'>"
-                + "\n".join(lines)
+                + "\n".join(lines + (["", "Forma vectorial equivalente:"] + vec_lines if vec_lines else []))
                 + "</pre></div>"
             )
             try:
                 self.procedimiento.setHtml(html)
             except Exception:
-                self.procedimiento.setPlainText("Sistema de ecuaciones ingresado:\n" + "\n".join(lines))
+                extra = "\n\nForma vectorial equivalente:\n" + "\n".join(vec_lines) if vec_lines else ""
+                self.procedimiento.setPlainText("Sistema de ecuaciones ingresado:\n" + "\n".join(lines) + extra)
         except Exception:
             pass
 

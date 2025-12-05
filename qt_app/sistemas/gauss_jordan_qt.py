@@ -450,6 +450,11 @@ class GaussJordanWindow(QMainWindow):
                 self.result.insertPlainText("Sistema de ecuaciones ingresado:\n")
                 for ln in lines:
                     self.result.insertPlainText(ln + "\n")
+                vec_lines = self._vector_form_from_aug(A)
+                if vec_lines:
+                    self.result.insertPlainText("\nForma vectorial equivalente:\n")
+                    for ln in vec_lines:
+                        self.result.insertPlainText(ln + "\n")
         except Exception:
             pass
 
@@ -489,6 +494,40 @@ class GaussJordanWindow(QMainWindow):
             left = " ".join(parts) if parts else "0"
             right = str(A_aug[i][-1]) if m > 0 else "0"
             lines.append(f"{left} = {right}")
+        return lines
+
+    def _vector_form_from_aug(self, A_aug):
+        """Forma vectorial por columnas: sum(xj * columna_j) = b."""
+        if not A_aug:
+            return []
+        n = len(A_aug)
+        m = len(A_aug[0])
+        num_vars = max(0, m - 1)
+        if num_vars == 0:
+            return []
+
+        cols = [[A_aug[i][j] for i in range(n)] for j in range(num_vars)]
+        b_col = [A_aug[i][-1] for i in range(n)] if m > 0 else [0] * n
+
+        coef_ancho = max((len(str(v)) for col in cols for v in col), default=1)
+        b_ancho = max((len(str(v)) for v in b_col), default=1)
+        var_names = [f"x{j+1}" for j in range(num_vars)]
+        var_ancho = max((len(v) for v in var_names), default=1)
+
+        def col_block(values, width):
+            return [f"[ {str(v).rjust(width)} ]" for v in values]
+
+        col_lines = [col_block(col, coef_ancho) for col in cols]
+        b_lines = col_block(b_col, b_ancho)
+
+        lines = []
+        for i in range(n):
+            parts = []
+            for idx, block in enumerate(col_lines):
+                label = var_names[idx] if i == 0 else " " * var_ancho
+                parts.append(f"{label} {block[i]}")
+            left = " + ".join(parts)
+            lines.append(f"{left} = {b_lines[i]}")
         return lines
 
     def _resolver(self):
