@@ -1,4 +1,4 @@
-﻿import tkinter as tk
+import tkinter as tk
 from tkinter import ttk, messagebox
 from gauss_jordan_app import GaussJordanApp
 from menu_matrices import MenuMatrices
@@ -9,12 +9,12 @@ from menu_metodos_numericos import MenuMetodosNumericos
 class MenuPrincipal:
     def __init__(self, root):
         self.root = root
-        self.root.title("Calculadora Ãlgebra Lineal")
+        self.root.title("Calculadora Álgebra Lineal")
         self.root.geometry("600x400")
         self.root.configure(bg="#ffe4e6")
 
         # ======================
-        # ConfiguraciÃ³n de estilos (no se modificÃ³ nada mÃ¡s)
+        # Configuración de estilos (no se modificó nada más)
         # ======================
         style = ttk.Style()
         try:
@@ -37,7 +37,7 @@ class MenuPrincipal:
         # ======================
         # Interfaz principal
         # ======================
-        ttk.Label(root, text="Calculadora Ãlgebra Lineal",
+        ttk.Label(root, text="Calculadora Álgebra Lineal",
                   font=("Segoe UI", 20, "bold"), background="#ffe4e6",
                   foreground="#b91c1c").pack(pady=40)
 
@@ -53,11 +53,11 @@ class MenuPrincipal:
         ttk.Button(root, text="Transformaciones lineales (T(x)=Ax)",
                    style="Primary.TButton", command=self.abrir_transformaciones).pack(pady=10)
 
-        ttk.Button(root, text="MÃ©todos NumÃ©ricos",
+        ttk.Button(root, text="Métodos Numéricos",
                    style="Primary.TButton", command=self.abrir_metodos_numericos).pack(pady=10)
 
     # ======================
-    # MÃ©todos
+    # Métodos
     # ======================
     def abrir_sistema(self):
         self.root.destroy()

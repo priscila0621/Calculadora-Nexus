@@ -1,4 +1,4 @@
-﻿import tkinter as tk
+import tkinter as tk
 from tkinter import ttk, messagebox
 from fractions import Fraction
 
@@ -62,7 +62,7 @@ class TranspuestaMatrizApp:
             fg="#b91c1c",
         ).pack(pady=(10, 6))
 
-        # configuraciÃ³n dimensiones
+        # configuración dimensiones
         cfg = tk.Frame(container, bg=self.bg)
         cfg.pack(pady=(6, 10))
 
@@ -179,10 +179,10 @@ class TranspuestaMatrizApp:
         )
         expr_row = tk.Frame(adv, bg=self.bg)
         expr_row.pack(fill="x", padx=6, pady=4)
-        tk.Label(expr_row, text="ExpresiÃ³n:", bg=self.bg).pack(side="left")
+        tk.Label(expr_row, text="Expresión:", bg=self.bg).pack(side="left")
         self.expr_entry = tk.Entry(expr_row, width=60, bg="white")
         self.expr_entry.pack(side="left", padx=8)
-        ttk.Button(expr_row, text="Evaluar expresiÃ³n", style="Primary.TButton", command=self._evaluar_expresion).pack(
+        ttk.Button(expr_row, text="Evaluar expresión", style="Primary.TButton", command=self._evaluar_expresion).pack(
             side="left", padx=8
         )
 
@@ -210,14 +210,14 @@ class TranspuestaMatrizApp:
             c = int(self.var_cols.get())
             if f <= 0 or c <= 0:
                 raise ValueError
-            # lÃ­mite razonable para UI
+            # límite razonable para UI
             if f > 12 or c > 12:
                 messagebox.showwarning(
                     "Aviso",
-                    "Dimensiones grandes pueden dificultar la visualizaciÃ³n (mÃ¡ximo 12x12).",
+                    "Dimensiones grandes pueden dificultar la visualización (máximo 12x12).",
                 )
         except Exception:
-            messagebox.showerror("Error", "Ingrese dimensiones vÃ¡lidas (enteros positivos).")
+            messagebox.showerror("Error", "Ingrese dimensiones válidas (enteros positivos).")
             return
 
         self.dim = (f, c)
@@ -313,7 +313,7 @@ class TranspuestaMatrizApp:
                 row_lbls.append(lbl)
             self.result_labels.append(row_lbls)
 
-        # secciÃ³n de pasos (procedimiento)
+        # sección de pasos (procedimiento)
         pasos_title = tk.Label(
             self.result_frame,
             text="Procedimiento paso a paso",
@@ -387,7 +387,7 @@ class TranspuestaMatrizApp:
             if f <= 0 or c <= 0:
                 raise ValueError
         except Exception:
-            messagebox.showerror("Error", "Ingrese dimensiones vÃ¡lidas para B.")
+            messagebox.showerror("Error", "Ingrese dimensiones válidas para B.")
             return
         self.dim_B = (f, c)
         grid = tk.Frame(self.ingreso_frame_B, bg=self.bg)
@@ -418,7 +418,7 @@ class TranspuestaMatrizApp:
             if f <= 0:
                 raise ValueError
         except Exception:
-            messagebox.showerror("Error", "Ingrese dimensiones vÃ¡lidas para x.")
+            messagebox.showerror("Error", "Ingrese dimensiones válidas para x.")
             return
         self.dim_x = (f, 1)
         grid = tk.Frame(self.ingreso_frame_x, bg=self.bg)
@@ -470,29 +470,29 @@ class TranspuestaMatrizApp:
 
     def _mat_add(self, A, B):
         if A is None or B is None:
-            raise ValueError("OperaciÃ³n requiere dos matrices.")
+            raise ValueError("Operación requiere dos matrices.")
         ra = len(A); ca = len(A[0]) if ra else 0
         rb = len(B); cb = len(B[0]) if rb else 0
         if ra != rb or ca != cb:
-            raise ValueError("OperaciÃ³n no definida: dimensiones incompatibles para suma.")
+            raise ValueError("Operación no definida: dimensiones incompatibles para suma.")
         return [[A[i][j] + B[i][j] for j in range(ca)] for i in range(ra)]
 
     def _mat_sub(self, A, B):
         if A is None or B is None:
-            raise ValueError("OperaciÃ³n requiere dos matrices.")
+            raise ValueError("Operación requiere dos matrices.")
         ra = len(A); ca = len(A[0]) if ra else 0
         rb = len(B); cb = len(B[0]) if rb else 0
         if ra != rb or ca != cb:
-            raise ValueError("OperaciÃ³n no definida: dimensiones incompatibles para resta.")
+            raise ValueError("Operación no definida: dimensiones incompatibles para resta.")
         return [[A[i][j] - B[i][j] for j in range(ca)] for i in range(ra)]
 
     def _mat_mul(self, A, B):
         if A is None or B is None:
-            raise ValueError("OperaciÃ³n requiere dos operandos.")
+            raise ValueError("Operación requiere dos operandos.")
         ra = len(A); ca = len(A[0]) if ra else 0
         rb = len(B); cb = len(B[0]) if rb else 0
         if ca != rb:
-            raise ValueError(f"OperaciÃ³n no definida: columnas de la izquierda ({ca}) != filas de la derecha ({rb}).")
+            raise ValueError(f"Operación no definida: columnas de la izquierda ({ca}) != filas de la derecha ({rb}).")
         # resultado ra x cb
         C = [[Fraction(0) for _ in range(cb)] for __ in range(ra)]
         for i in range(ra):
@@ -510,7 +510,7 @@ class TranspuestaMatrizApp:
 
     # parser simple de expresiones con A, B, x y ^T
     def _preprocess_expr(self, s: str) -> str:
-        # insertar '*' para multiplicaciÃ³n implÃ­cita entre A,B,x, ')'
+        # insertar '*' para multiplicación implícita entre A,B,x, ')'
         s = s.replace(' ', '')
         out = ''
         prev = ''
@@ -547,7 +547,7 @@ class TranspuestaMatrizApp:
             # salto si hay espacios
             if s[i].isspace():
                 i += 1; continue
-            raise ValueError('Caracter invalido en expresiÃ³n: '+s[i])
+            raise ValueError('Caracter invalido en expresión: '+s[i])
         return tokens
 
     def _to_postfix(self, tokens):
@@ -571,13 +571,13 @@ class TranspuestaMatrizApp:
                 while ops and ops[-1] != '(':
                     out.append(ops.pop())
                 if not ops:
-                    raise ValueError('ParÃ©ntesis desbalanceados')
+                    raise ValueError('Paréntesis desbalanceados')
                 ops.pop()
             else:
                 raise ValueError('Token inesperado: '+str(t))
         while ops:
             if ops[-1] in '()':
-                raise ValueError('ParÃ©ntesis desbalanceados')
+                raise ValueError('Paréntesis desbalanceados')
             out.append(ops.pop())
         return out
 
@@ -595,11 +595,11 @@ class TranspuestaMatrizApp:
                 stack.append(('A', A))
             elif t == 'B':
                 if B is None:
-                    raise ValueError('B no definida pero usada en expresiÃ³n')
+                    raise ValueError('B no definida pero usada en expresión')
                 stack.append(('B', B))
             elif t == 'x':
                 if x is None:
-                    raise ValueError('x no definido pero usado en expresiÃ³n')
+                    raise ValueError('x no definido pero usado en expresión')
                 stack.append(('x', x))
             elif t == '^T':
                 if not stack:
@@ -649,7 +649,7 @@ class TranspuestaMatrizApp:
             else:
                 raise ValueError('Token desconocido en postfijo: '+str(t))
         if len(stack) != 1:
-            raise ValueError('ExpresiÃ³n invalida, pila final: '+str(len(stack)))
+            raise ValueError('Expresión invalida, pila final: '+str(len(stack)))
         final_name, final_mat = stack[0]
         return final_mat, pasos
 
@@ -658,7 +658,7 @@ class TranspuestaMatrizApp:
             w.destroy()
         expr_raw = (self.expr_entry.get() or '').strip()
         if not expr_raw:
-            messagebox.showerror('Error', 'Ingrese una expresiÃ³n para evaluar.')
+            messagebox.showerror('Error', 'Ingrese una expresión para evaluar.')
             return
         try:
             A = self._leer_matriz()
@@ -726,7 +726,7 @@ class TranspuestaMatrizApp:
                 row_lbls.append(lbl)
             self.result_labels.append(row_lbls)
 
-        # secciÃ³n de pasos (procedimiento)
+        # sección de pasos (procedimiento)
         pasos_title = tk.Label(
             self.result_frame,
             text="Procedimiento paso a paso",
@@ -743,7 +743,7 @@ class TranspuestaMatrizApp:
         self.pasos_text = tk.Text(pasos_frame, height=10, yscrollcommand=scrollbar.set, bg="white")
         self.pasos_text.pack(side="left", fill="both", expand=True)
         scrollbar.config(command=self.pasos_text.yview)
-        # insertar pasos con saltos de lÃ­nea ya legibles
+        # insertar pasos con saltos de línea ya legibles
         self.pasos_text.insert('1.0', '\n\n'.join(pasos))
 
     def _volver_al_inicio(self):

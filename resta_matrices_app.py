@@ -1,4 +1,4 @@
-﻿import tkinter as tk
+import tkinter as tk
 from tkinter import ttk, messagebox
 from fractions import Fraction
 
@@ -67,7 +67,7 @@ class RestaMatricesApp:
     def _parse_fraction(self, s):
         s = s.strip()
         if s == "":
-            raise ValueError("VacÃ­o")
+            raise ValueError("Vacío")
         s = s.replace(",", ".")
         return Fraction(s)
 
@@ -85,13 +85,13 @@ class RestaMatricesApp:
 
     def ask_num_and_dimensions(self):
         self.clear_main()
-        ttk.Label(self.main_frame, text="ConfiguraciÃ³n - Cantidad y dimensiones", font=("Segoe UI", 14, "bold"),
+        ttk.Label(self.main_frame, text="Configuración - Cantidad y dimensiones", font=("Segoe UI", 14, "bold"),
                   background="#ffe4e6", foreground="#b91c1c").pack(pady=10)
 
         frame = ttk.Frame(self.main_frame, padding=8)
         frame.pack(pady=8)
 
-        ttk.Label(frame, text="Â¿CuÃ¡ntas matrices deseas restar?", background="#ffe4e6").grid(row=0, column=0, padx=6, pady=6, sticky="w")
+        ttk.Label(frame, text="¿Cuántas matrices deseas restar?", background="#ffe4e6").grid(row=0, column=0, padx=6, pady=6, sticky="w")
         self.num_var = tk.StringVar()
         tk.Entry(frame, textvariable=self.num_var, width=6, font=("Segoe UI", 12), bg="#fff0f5").grid(row=0, column=1, padx=6, pady=6)
 
@@ -118,7 +118,7 @@ class RestaMatricesApp:
             if n < 2 or r <= 0 or c <= 0:
                 raise ValueError
         except Exception:
-            messagebox.showerror("Error", "Ingresa nÃºmeros vÃ¡lidos (mÃ­nimo 2 matrices, dimensiones > 0)")
+            messagebox.showerror("Error", "Ingresa números válidos (mínimo 2 matrices, dimensiones > 0)")
             return
         self.num_matrices, self.rows, self.cols = n, r, c
         self.matrices, self.current_matrix = [], 0
@@ -214,7 +214,7 @@ class RestaMatricesApp:
 
         self._display_matrix(self.main_frame, result)
 
-        ttk.Label(self.main_frame, text="Detalle de la resta por posiciÃ³n",
+        ttk.Label(self.main_frame, text="Detalle de la resta por posición",
                   font=("Segoe UI", 13, "bold"),
                   background="#ffe4e6", foreground="#7f1d1d").pack(pady=8)
 
