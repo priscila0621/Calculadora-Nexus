@@ -81,15 +81,16 @@ def _minor(matrix: List[List[Fraction]], row: int, col: int) -> List[List[Fracti
     ]
 
 
-def determinante_con_pasos(matrix: List[List[Fraction]], level: int = 0) -> Tuple[Fraction, List[str]]:
+def determinante_con_pasos(matrix: List[List[Fraction]], level: int = 0, matrix_name: str = "A") -> Tuple[Fraction, List[str]]:
     n = len(matrix)
     indent = "    " * level
     steps: List[str] = []
     separator = indent + ("—" * 70)
+    det_label = f"det({matrix_name})"
 
     if n == 1:
         value = matrix[0][0]
-        steps.append(f"{indent}Caso base 1x1: det(A) = {_fmt(value)}")
+        steps.append(f"{indent}Caso base 1x1: {det_label} = {_fmt(value)}")
         return value, steps
 
     if n == 2:
@@ -101,7 +102,7 @@ def determinante_con_pasos(matrix: List[List[Fraction]], level: int = 0) -> Tupl
         steps.append(f"{indent}Caso base 2x2:")
         steps.extend(_matrix_lines(matrix, indent + "    "))
         steps.append(
-            f"{indent}det(A) = ({_fmt(a11)} · {_fmt(a22)}) − ({_fmt(a12)} · {_fmt(a21)}) = {_fmt(prod1)} − {_fmt(prod2)} = {_fmt(det)}"
+            f"{indent}{det_label} = ({_fmt(a11)} · {_fmt(a22)}) − ({_fmt(a12)} · {_fmt(a21)}) = {_fmt(prod1)} − {_fmt(prod2)} = {_fmt(det)}"
         )
         return det, steps
 
@@ -114,13 +115,13 @@ def determinante_con_pasos(matrix: List[List[Fraction]], level: int = 0) -> Tupl
         for value in diag:
             det *= value
         diag_product = " · ".join(_fmt(value) for value in diag)
-        steps.append(f"{indent}La matriz es triangular {tipo}.")
+        steps.append(f"{indent}La matriz {matrix_name} es triangular {tipo}.")
         steps.append(f"{indent}Producto de la diagonal principal: {diag_product} = {_fmt(det)}")
         return det, steps
 
     steps.append(f"{indent}Expansion por cofactores a lo largo de la primera fila")
     formula = " + ".join(f"{_label('a', 1, j + 1)}{_label('C', 1, j + 1)}" for j in range(n))
-    steps.append(f"{indent}det(A) = {formula}")
+    steps.append(f"{indent}{det_label} = {formula}")
 
     contributions: List[Fraction] = []
     summary_values: List[Fraction] = []
@@ -146,7 +147,7 @@ def determinante_con_pasos(matrix: List[List[Fraction]], level: int = 0) -> Tupl
         steps.append(f"{indent}Submatriz {minor_label} (eliminando fila 1 y columna {j+1}):")
         steps.extend(_matrix_lines(submatriz, indent + "    "))
 
-        sub_det, sub_steps = determinante_con_pasos(submatriz, level + 1)
+        sub_det, sub_steps = determinante_con_pasos(submatriz, level + 1, minor_label)
         steps.extend(sub_steps)
         steps.append(f"{indent}det({minor_label}) = {_fmt(sub_det)}")
 
@@ -165,7 +166,7 @@ def determinante_con_pasos(matrix: List[List[Fraction]], level: int = 0) -> Tupl
     steps.append(separator)
     total = sum(contributions, Fraction(0))
     partes = " + ".join(_fmt_factor(valor) for valor in summary_values)
-    steps.append(f"{indent}Suma total de contribuciones: det(A) = {partes} = {_fmt(total)}")
+    steps.append(f"{indent}Suma total de contribuciones: {det_label} = {partes} = {_fmt(total)}")
     return total, steps
 
 
