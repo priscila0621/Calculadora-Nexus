@@ -420,6 +420,31 @@ class MetodoSecanteWindow(bq.MetodoBiseccionWindow):
                 candidate_pairs = []
         candidate_pairs = _dedup_pairs_by_mid(candidate_pairs)
 
+        # Si el usuario no ingresó pares manualmente, ampliar automáticamente
+        # la cantidad de tarjetas para cubrir todos los candidatos detectados.
+        if candidate_pairs:
+            try:
+                has_manual_pairs = any(
+                    (card.values()[1] and card.values()[2]) for card in self.root_cards
+                )
+            except Exception:
+                has_manual_pairs = False
+            if not has_manual_pairs:
+                try:
+                    max_cards = self.root_count.maximum()
+                except Exception:
+                    max_cards = 10
+                desired = min(len(candidate_pairs), max_cards)
+                try:
+                    if desired > self.root_count.value():
+                        self.root_count.setValue(desired)
+                        try:
+                            self._sync_root_cards()
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
+
         # 2) Armamos la lista final de semillas por tarjeta.
         seeds: List[Tuple[float, float]] = []
         card_count = self.root_count.value()
