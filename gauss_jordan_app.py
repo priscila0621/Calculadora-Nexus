@@ -10,13 +10,14 @@ class GaussJordanApp:
         # Callback para regresar al inicio
         self.volver_callback = volver_callback
 
-        # Configuración de la ventana principal
+        # Configuracion de la ventana principal
         self.root = root
-        self.root.title("Método de Eliminación de Gauss-Jordan")
+        # Titulo en ASCII para evitar problemas de codificacion en la barra de ventana
+        self.root.title("Metodo de Eliminacion de Gauss-Jordan")
         self.root.geometry("1250x900")
         self.root.configure(bg="#ffe4e6")  # Fondo rosita pastel
 
-        # Configuración de estilos y widgets iniciales
+        # Configuracion de estilos y widgets iniciales
         self._setup_styles()
         self._setup_widgets()
 
@@ -28,11 +29,11 @@ class GaussJordanApp:
         self.detalle_button = None
         self.mostrando_detalles = False
 
-        # El botón "Volver" se creará dentro de frame_top (ahora junto al limpiar)
+        # El boton "Volver" se creara dentro de frame_top (ahora junto al limpiar)
         self.boton_volver = None
 
     # ---------------------------------------------------------
-    # Configuración de estilos visuales
+    # Configuracion de estilos visuales
     # ---------------------------------------------------------
     def _setup_styles(self):
         style = ttk.Style()
@@ -56,42 +57,42 @@ class GaussJordanApp:
                   foreground=[("!disabled", "#b91c1c"), ("active", "#7f1d1d")])
 
     # ---------------------------------------------------------
-    # Creación de los elementos gráficos principales
+    # Creacion de los elementos graficos principales
     # ---------------------------------------------------------
     def _setup_widgets(self):
         frame_top = ttk.Frame(self.root, padding=20, style="TFrame")
         frame_top.pack(fill="x", pady=10)
 
-        # Entrada para número de ecuaciones (Spinbox)
-        ttk.Label(frame_top, text="Número de ecuaciones:").grid(row=0, column=0, padx=8, pady=5, sticky="e")
+        # Entrada para numero de ecuaciones (Spinbox)
+        ttk.Label(frame_top, text="Numero de ecuaciones:").grid(row=0, column=0, padx=8, pady=5, sticky="e")
         self.ecuaciones_var = tk.IntVar(value=2)
         tk.Spinbox(frame_top, from_=1, to=20, textvariable=self.ecuaciones_var, width=6, font=("Segoe UI", 12),
                    justify="center").grid(row=0, column=1, padx=8, pady=5)
 
-        # Entrada para número de incógnitas (Spinbox)
-        ttk.Label(frame_top, text="Número de incógnitas:").grid(row=0, column=2, padx=8, pady=5, sticky="e")
+        # Entrada para numero de incognitas (Spinbox)
+        ttk.Label(frame_top, text="Numero de incognitas:").grid(row=0, column=2, padx=8, pady=5, sticky="e")
         self.incognitas_var = tk.IntVar(value=2)
         tk.Spinbox(frame_top, from_=1, to=20, textvariable=self.incognitas_var, width=6, font=("Segoe UI", 12),
                    justify="center").grid(row=0, column=3, padx=8, pady=5)
 
-        # Botón para crear la matriz
+        # Boton para crear la matriz
         ttk.Button(frame_top, text="Crear matriz", style="Primary.TButton", command=self.crear_matriz).grid(
             row=0, column=4, padx=10)
 
-        # Botón para limpiar pantalla
+        # Boton para limpiar pantalla
         ttk.Button(frame_top, text="Limpiar pantalla", style="Primary.TButton", command=self.limpiar_pantalla).grid(
             row=0, column=5, padx=10)
 
-        # Botón volver al inicio al lado del de limpiar
+        # Boton volver al inicio al lado del de limpiar
         self.boton_volver = ttk.Button(frame_top, text="Volver al inicio",
                                        style="Primary.TButton", command=self.volver_callback)
         self.boton_volver.grid(row=0, column=6, padx=10)
 
-        # Botón para verificar independencia de columnas
+        # Boton para verificar independencia de columnas
         ttk.Button(frame_top, text="Verificar independencia",
                    style="Primary.TButton", command=self.verificar_independencia_columnas).grid(
             row=0, column=7, padx=10)
-        # BotA3n para abrir el modelo de Leontief
+        # Boton para abrir el modelo de Leontief
         ttk.Button(frame_top, text="Modelo de Leontief",
                    style="Primary.TButton", command=self.abrir_modelo_leontief).grid(
             row=0, column=8, padx=10)
@@ -100,7 +101,7 @@ class GaussJordanApp:
         self.frame_matriz = ttk.Frame(self.root, padding=20)
         self.frame_matriz.pack()
 
-        # Área de resultados
+        # Area de resultados
         frame_result = ttk.LabelFrame(self.root, text="Resultados", padding=15, labelanchor="n")
         frame_result.pack(fill="both", expand=True, padx=15, pady=15)
 
@@ -116,7 +117,7 @@ class GaussJordanApp:
         self.text_result.tag_configure("bold", font=("Consolas", 12, "bold"))
         self.text_result.tag_configure("comment", font=("Consolas", 10, "italic"), foreground="#555")
 
-        # Eliminar botón "Verificar independencia" (ya no se requiere)
+        # Eliminar boton "Verificar independencia" (ya no se requiere)
         try:
             for child in frame_top.winfo_children():
                 try:
@@ -141,7 +142,7 @@ class GaussJordanApp:
             return
 
         self.filas = filas
-        self.columnas = columnas + 1  # última columna = términos independientes
+        self.columnas = columnas + 1  # ultima columna = tArminos independientes
         self.entries = []
 
         # Encabezados x1, x2, x3...
@@ -164,7 +165,7 @@ class GaussJordanApp:
                 fila_entries.append(e)
             self.entries.append(fila_entries)
 
-        # Botón "Resolver"
+        # Boton "Resolver"
         ttk.Button(self.frame_matriz, text="Resolver", style="Primary.TButton", command=self.resolver).grid(
             row=self.filas + 1, columnspan=self.columnas, pady=20)
 
@@ -252,13 +253,13 @@ class GaussJordanApp:
                 self.detalle_button.destroy()
             self.mostrando_detalles = False
 
-            # Botón de pasos detallados
+            # Boton de pasos detallados
             self.detalle_button = ttk.Button(self.frame_matriz, text="Ver pasos detallados",
                                             style="Primary.TButton", command=self.toggle_detalles)
             self.detalle_button.grid(row=self.filas + 2, columnspan=self.columnas, pady=10)
 
         except Exception as e:
-            messagebox.showerror("Error", f"Ocurrió un error: {e}")
+            messagebox.showerror("Error", f"Ocurrio un error: {e}")
 
     # ---------------------------------------------------------
     # Extraer soluciones de la matriz reducida
@@ -288,7 +289,7 @@ class GaussJordanApp:
             for i in range(n):
                 if pivotes[i] != -1:
                     partes = []
-                    if A[i][-1] != 0:   # Solo agregar el término independiente si no es 0
+                    if A[i][-1] != 0:   # Solo agregar el tArmino independiente si no es 0
                         partes.append(str(A[i][-1]))
                     for j in libres:
                         coef = -A[i][j]
@@ -319,7 +320,7 @@ class GaussJordanApp:
         self.text_result.configure(state="normal")
         self.text_result.delete("1.0", tk.END)
 
-        self.text_result.insert(tk.END, "===== SOLUCI\u00D3N FINAL =====\n\n", ("bold",))
+        self.text_result.insert(tk.END, "===== SOLUCION FINAL =====\n\n", ("bold",))
         if self.matriz_final is None:
             self.text_result.insert(tk.END, "(no hay soluciones calculadas)\n")
             self.text_result.configure(state="disabled")
@@ -338,19 +339,19 @@ class GaussJordanApp:
                 pass
 
         if tipo == "incompatible":
-            self.text_result.insert(tk.END, "El sistema es inconsistente: aparece una fila del tipo 0 = b con b≠0\n")
+            self.text_result.insert(tk.END, "El sistema es inconsistente: aparece una fila del tipo 0 = b con b != 0\n")
         elif tipo == "determinado":
-            self.text_result.insert(tk.END, "El sistema tiene solución única:\n\n")
+            self.text_result.insert(tk.END, "El sistema tiene solucion unica:\n\n")
             for i, val in enumerate(soluciones):
                 self.text_result.insert(tk.END, f"x{i+1} = {val}\n")
         elif tipo == "indeterminado":
             self.text_result.insert(tk.END, "El sistema tiene infinitas soluciones:\n\n")
-            # Solución en forma normal
+            # Solucion en forma normal
             for i, val in enumerate(soluciones):
                 self.text_result.insert(tk.END, f"x{i+1} = {val}\n")
 
             # --- Forma vectorial tipo libro de texto ---
-            self.text_result.insert(tk.END, "\nConjunto solución:\n\n")
+            self.text_result.insert(tk.END, "\nConjunto solucion:\n\n")
             num_vars = self.columnas - 1
             libres = []
             for i, val in enumerate(soluciones):
@@ -366,7 +367,7 @@ class GaussJordanApp:
                 inter_desc += "Si. Comparten infinitos puntos en comun."
             self.text_result.insert(tk.END, inter_desc + "\n\n")
 
-            # Determinar si el sistema es homogéneo (todos los términos independientes son 0)
+            # Determinar si el sistema es homogAneo (todos los tArminos independientes son 0)
             es_homogeneo = all(self.matriz_original[i][-1] == 0 for i in range(self.filas))
 
             # Vector particular (todas libres en 0)
@@ -408,23 +409,23 @@ class GaussJordanApp:
 
             # Imprimir en formato columna tipo libro de texto, con corchetes alineados
             def vector_columna_str(vector, ancho=6):
-                # Calcula el ancho máximo para alinear los números
+                # Calcula el ancho maximo para alinear los numeros
                 maxlen = max(len(str(x)) for x in vector)
                 lines = []
                 for i, val in enumerate(vector):
                     valstr = str(val).rjust(maxlen)
                     if i == 0:
-                        lines.append(f"\u23A1 {valstr} \u23A4")  # ⎡ ⎤
+                        lines.append(f"\u23A1 {valstr} \u23A4")
                     elif i == len(vector) - 1:
-                        lines.append(f"\u23A3 {valstr} \u23A6")  # ⎣ ⎦
+                        lines.append(f"\u23A3 {valstr} \u23A6")
                     else:
-                        lines.append(f"\u23A2 {valstr} \u23A5")  # ⎢ ⎥
+                        lines.append(f"\u23A2 {valstr} \u23A5")
                 return lines
 
             # Imprimir en formato columna tipo libro de texto, con corchetes alineados y x = centrado
             def imprimir_vectores_con_x_igual(lines):
                 x_eq = "x ="
-                # Buscar la posición del primer corchete de bloque
+                # Buscar la posicion del primer corchete de bloque
                 primer_vector_inicio = lines[0].find("\u23A1")
                 if primer_vector_inicio < 0:
                     primer_vector_inicio = 0
@@ -445,17 +446,17 @@ class GaussJordanApp:
                 imprimir_vectores_con_x_igual(lines)
                 self.text_result.insert(
                     tk.END,
-                    "\nDonde " + ", ".join([f"x{l+1}" for l in libres]) + " \u2208 \u211D (parámetros libres).\n"
+                    "\nDonde " + ", ".join([f"x{l+1}" for l in libres]) + " \u2208 \u211D (parametros libres).\n"
                 )
             else:
-                # Solo combinación lineal si es homogéneo
+                # Solo combinacion lineal si es homogeneo
                 nombres = [f"x{libres[idx]+1}" for idx in range(len(libres))]
                 vectores = [vectores_libres[idx] for idx in range(len(libres))]
                 lines = self.vectores_columna_lado_a_lado(vectores, nombres, espacio_entre_vectores=4)
                 imprimir_vectores_con_x_igual(lines)
                 self.text_result.insert(
                     tk.END,
-                    "\nDonde " + ", ".join([f"x{l+1}" for l in libres]) + " \u2208 \u211D (parámetros libres).\n"
+                    "\nDonde " + ", ".join([f"x{l+1}" for l in libres]) + " \u2208 \u211D (parametros libres).\n"
                 )
 
         self.text_result.configure(state="disabled")
@@ -476,7 +477,7 @@ class GaussJordanApp:
             self.mostrando_detalles = True
 
     # ---------------------------------------------------------
-    # Mostrar pasos del método
+    # Mostrar pasos del mAtodo
     # ---------------------------------------------------------
     def mostrar_detalles(self):
         self.text_result.configure(state="normal")
@@ -497,23 +498,23 @@ class GaussJordanApp:
                 self.text_result.insert(tk.END, line_text)
             self.text_result.insert(tk.END, "\n" + "-" * 110 + "\n\n")
 
-        self.text_result.insert(tk.END, "===== SOLUCI\u00D3N FINAL =====\n", ("bold",))
+        self.text_result.insert(tk.END, "===== SOLUCION FINAL =====\n", ("bold",))
         soluciones, tipo = self._extraer_soluciones(self.matriz_final)
         for i, val in enumerate(soluciones):
             self.text_result.insert(tk.END, f"x{i+1} = {val}\n")
         self.text_result.configure(state="disabled")
 
     # ---------------------------------------------------------
-    # Inserta un encabezado en el área de resultados
+    # Inserta un encabezado en el Area de resultados
     # ---------------------------------------------------------
     def _insert_header(self, titulo, comentario=""):
-        self.text_result.insert(tk.END, "Operación: ")
+        self.text_result.insert(tk.END, "Operacion: ")
         start = self.text_result.index(tk.END)
         self.text_result.insert(tk.END, titulo)
         end = self.text_result.index(tk.END)
         self.text_result.tag_add("bold", start, end)
         if comentario:
-            self.text_result.insert(tk.END, "  \u2014  ")
+            self.text_result.insert(tk.END, "  --  ")
             c_start = self.text_result.index(tk.END)
             self.text_result.insert(tk.END, comentario)
             c_end = self.text_result.index(tk.END)
@@ -552,7 +553,7 @@ class GaussJordanApp:
                 A[fila_pivote] = [val / divisor for val in A[fila_pivote]]
                 pasos.append({
                     "titulo": f"F{fila_pivote+1} \u2192 F{fila_pivote+1}/{divisor}",
-                    "comentario": f"Normalización: se convierte en pivote a 1 en la columna {col+1}",
+                    "comentario": f"Normalizacion: se convierte en pivote a 1 en la columna {col+1}",
                     "oper_lines": [],
                     "matriz_lines": self.format_matriz_lines(A)
                 })
@@ -657,7 +658,7 @@ class GaussJordanApp:
             return
         try:
             if not getattr(self, "entries", None):
-                # No hay cuadr�cula: limpia el panel sin texto
+                # No hay cuadricula: limpia el panel sin texto
                 self.text_result.configure(state="normal")
                 self.text_result.delete("1.0", tk.END)
                 self.text_result.configure(state="disabled")
@@ -704,16 +705,16 @@ class GaussJordanApp:
             line = ""
             for idx, v in enumerate(vectores):
                 valstr = str(v[fila]).rjust(max_num_len)
-                # Corchetes según la fila
+                # Corchetes segun la fila
                 if fila == 0:
-                    corchete_izq = "\u23A1"  # ⎡
-                    corchete_der = "\u23A4"  # ⎤
+                    corchete_izq = "\u23A1"  # a
+                    corchete_der = "\u23A4"  # a
                 elif fila == n - 1:
-                    corchete_izq = "\u23A3"  # ⎣
-                    corchete_der = "\u23A6"  # ⎦
+                    corchete_izq = "\u23A3"
+                    corchete_der = "\u23A6"
                 else:
-                    corchete_izq = "\u23A2"  # ⎢
-                    corchete_der = "\u23A5"  # ⎥
+                    corchete_izq = "\u23A2"  # a
+                    corchete_der = "\u23A5"  # a
                 # Encabezado solo en la primera fila
                 if fila == 0:
                     encabezado = encabezados[idx].rjust(max_encabezado)
@@ -730,8 +731,8 @@ class GaussJordanApp:
     # ---------------------------------------------------------
     # Verificar independencia de columnas
     # ---------------------------------------------------------
-# verificar_independencia_columnas removido a petici�n del usuario
+# verificar_independencia_columnas removido a peticion del usuario
 
     def verificar_independencia_columnas(self):
-        """M�todo retirado. Stub de compatibilidad."""
+        """Metodo retirado. Stub de compatibilidad."""
         pass
