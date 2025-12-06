@@ -182,6 +182,7 @@ class SecantRootCard(bq.RootInputCard):
 
 class MetodoSecanteWindow(bq.MetodoBiseccionWindow):
     def __init__(self, parent=None):
+        self._skip_sign_filter = True
         super().__init__(parent)
         self.setWindowTitle("Metodo de la secante")
         try:

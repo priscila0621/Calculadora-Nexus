@@ -77,7 +77,7 @@ def _run_newton_raphson(
 
         x_next = x_n - fx / dfx
         if not math.isfinite(x_next):
-            raise ValueError("La iteración generó un valor no finito. Ajusta el valor inicial.")
+            raise ValueError("La iteraciÃ³n generÃ³ un valor no finito. Ajusta el valor inicial.")
 
         error = abs(x_next - x_n)
         fx_next = func(x_next)
@@ -88,7 +88,7 @@ def _run_newton_raphson(
 
         x_n = x_next
 
-    raise ValueError("El método excedió el máximo de iteraciones permitidas.")
+    raise ValueError("El mÃ©todo excediÃ³ el mÃ¡ximo de iteraciones permitidas.")
 
 
 class NewtonRootCard(bq.RootInputCard):
@@ -100,8 +100,8 @@ class NewtonRootCard(bq.RootInputCard):
         except Exception:
             pass
 
-        self.lbl_aprox.setText("Punto inicial x₀:")
-        self.lbl_aprox.setToolTip("Valor desde el cual arrancará Newton-Raphson.")
+        self.lbl_aprox.setText("Punto inicial xâ:")
+        self.lbl_aprox.setToolTip("Valor desde el cual arrancarÃ¡ Newton-Raphson.")
         self.approx_edit.setPlaceholderText("Ejemplo: -1.25")
 
     def set_primary_mode(self, is_primary: bool) -> None:
@@ -113,7 +113,7 @@ class NewtonRootCard(bq.RootInputCard):
 class MetodoNewtonRaphsonWindow(bq.MetodoBiseccionWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Método de Newton-Raphson")
+        self.setWindowTitle("MÃ©todo de Newton-Raphson")
         try:
             self.btn_calcular.setText("Calcular Newton-Raphson")
         except Exception:
@@ -122,35 +122,35 @@ class MetodoNewtonRaphsonWindow(bq.MetodoBiseccionWindow):
 
     def _update_static_labels(self) -> None:
         replacements = {
-            "Método de Bisección": "Método de Newton-Raphson",
-            "MActodo de BisecciA3n": "Método de Newton-Raphson",
+            "MÃ©todo de BisecciÃ³n": "MÃ©todo de Newton-Raphson",
+            "MActodo de BisecciA3n": "MÃ©todo de Newton-Raphson",
             (
-                "Para la primera raíz ingresa f(x), el intervalo [a, b], la tolerancia y (opcional) un aproximado. "
-                "Para las siguientes raíces solo ingresa el intervalo [a, b]."
+                "Para la primera raÃ­z ingresa f(x), el intervalo [a, b], la tolerancia y (opcional) un aproximado. "
+                "Para las siguientes raÃ­ces solo ingresa el intervalo [a, b]."
             ): (
-                "Para la primera raíz ingresa f(x), el punto inicial x₀ y la tolerancia. "
-                "Las siguientes raíces solo requieren su propio x₀."
+                "Para la primera raÃ­z ingresa f(x), el punto inicial xâ y la tolerancia. "
+                "Las siguientes raÃ­ces solo requieren su propio xâ."
             ),
             (
                 "Para la primera raA-z ingresa f(x), el intervalo [a, b], la tolerancia y (opcional) un aproximado. "
                 "Para las siguientes raA-ces solo ingresa el intervalo [a, b]."
             ): (
-                "Para la primera raíz ingresa f(x), el punto inicial x₀ y la tolerancia. "
-                "Las siguientes raíces solo requieren su propio x₀."
+                "Para la primera raÃ­z ingresa f(x), el punto inicial xâ y la tolerancia. "
+                "Las siguientes raÃ­ces solo requieren su propio xâ."
             ),
             (
-                "Puedes calcular hasta diez raíces reutilizando la misma f(x) y tolerancia de la primera. "
-                "Cada intervalo validará que f(a) y f(b) tengan signos opuestos antes de iniciar."
+                "Puedes calcular hasta diez raÃ­ces reutilizando la misma f(x) y tolerancia de la primera. "
+                "Cada intervalo validarÃ¡ que f(a) y f(b) tengan signos opuestos antes de iniciar."
             ): (
-                "Puedes calcular hasta diez raíces reutilizando la misma f(x) y tolerancia. "
-                "Si dejas x₀ vacío, la aplicación sugerirá candidatos detectando cambios de signo."
+                "Puedes calcular hasta diez raÃ­ces reutilizando la misma f(x) y tolerancia. "
+                "Si dejas xâ vacÃ­o, la aplicaciÃ³n sugerirÃ¡ candidatos detectando cambios de signo."
             ),
             (
                 "Puedes calcular hasta diez raA-ces reutilizando la misma f(x) y tolerancia de la primera. "
-                "Cada intervalo validarA� que f(a) y f(b) tengan signos opuestos antes de iniciar."
+                "Cada intervalo validarAï¿½ que f(a) y f(b) tengan signos opuestos antes de iniciar."
             ): (
-                "Puedes calcular hasta diez raíces reutilizando la misma f(x) y tolerancia. "
-                "Si dejas x₀ vacío, la aplicación sugerirá candidatos detectando cambios de signo."
+                "Puedes calcular hasta diez raÃ­ces reutilizando la misma f(x) y tolerancia. "
+                "Si dejas xâ vacÃ­o, la aplicaciÃ³n sugerirÃ¡ candidatos detectando cambios de signo."
             ),
         }
         for lbl in self.findChildren(QLabel):
@@ -158,7 +158,7 @@ class MetodoNewtonRaphsonWindow(bq.MetodoBiseccionWindow):
             if text in replacements:
                 lbl.setText(replacements[text])
             elif "bisecci" in text.lower():
-                lbl.setText("Método de Newton-Raphson")
+                lbl.setText("MÃ©todo de Newton-Raphson")
 
     def _sync_root_cards(self):
         target = self.root_count.value()
@@ -241,8 +241,8 @@ class MetodoNewtonRaphsonWindow(bq.MetodoBiseccionWindow):
                 except Exception:
                     y = float("nan")
                 ys.append(y)
-            # Romper las líneas en saltos/discontinuidades grandes para evitar
-            # conexiones que no corresponden a la función (mejora similitud con Desmos)
+            # Romper las lÃ­neas en saltos/discontinuidades grandes para evitar
+            # conexiones que no corresponden a la funciÃ³n (mejora similitud con Desmos)
             try:
                 if np is not None:
                     yarr = np.array(ys, dtype=float)
@@ -283,7 +283,7 @@ class MetodoNewtonRaphsonWindow(bq.MetodoBiseccionWindow):
         if plotted:
             ax.set_xlim(x_min, x_max)
             ax.legend()
-            ax.set_title("Ajusta la función y los valores iniciales")
+            ax.set_title("Ajusta la funciÃ³n y los valores iniciales")
         else:
             ax.set_title("Escribe f(x) para previsualizar la curva")
         self._mpl["canvas"].draw_idle()
@@ -319,8 +319,8 @@ class MetodoNewtonRaphsonWindow(bq.MetodoBiseccionWindow):
         else:
             x_min, x_max = self._current_x_range()
 
-        # Asegurar que la ventana incluya también la vista previa (si el usuario la vio antes),
-        # para que la función no aparezca con zoom distinto tras calcular.
+        # Asegurar que la ventana incluya tambiÃ©n la vista previa (si el usuario la vio antes),
+        # para que la funciÃ³n no aparezca con zoom distinto tras calcular.
         try:
             prev_min, prev_max = self._current_x_range()
             x_min = min(x_min, prev_min)
@@ -328,7 +328,7 @@ class MetodoNewtonRaphsonWindow(bq.MetodoBiseccionWindow):
         except Exception:
             pass
 
-        # Evitar rango demasiado pequeño que provoque distorsión en la forma
+        # Evitar rango demasiado pequeÃ±o que provoque distorsiÃ³n en la forma
         if x_max - x_min < 1e-6:
             mid = (x_min + x_max) / 2.0
             x_min = mid - 1.0
@@ -361,7 +361,7 @@ class MetodoNewtonRaphsonWindow(bq.MetodoBiseccionWindow):
                 ys.append(y)
             color = colors[i % len(colors)] if colors else None
             iter_color = "#555555"
-            # Romper en discontinuidades grandes para no dibujar líneas que no existen
+            # Romper en discontinuidades grandes para no dibujar lÃ­neas que no existen
             try:
                 if np is not None:
                     yarr = np.array(ys, dtype=float)
@@ -409,24 +409,24 @@ class MetodoNewtonRaphsonWindow(bq.MetodoBiseccionWindow):
                 except Exception:
                     pass
 
-                # Línea guía desde (x_n, f(x_n)) hasta (x_{n+1}, 0) para mostrar la intersección con el eje X
+                # LÃ­nea guÃ­a desde (x_n, f(x_n)) hasta (x_{n+1}, 0) para mostrar la intersecciÃ³n con el eje X
                 try:
                     x_next = paso.x_next
                     ax.plot([paso.x, x_next], [paso.fx, 0.0], color=iter_color, linestyle='--', alpha=0.8, linewidth=1.0, zorder=4)
-                    # Línea vertical para mostrar el salto desde el eje X hacia f(x_{n+1})
+                    # LÃ­nea vertical para mostrar el salto desde el eje X hacia f(x_{n+1})
                     try:
                         fy_next = func(float(x_next))
                         ax.plot([x_next, x_next], [0.0, fy_next], color=iter_color, linestyle=':', alpha=0.8, linewidth=1.0, zorder=4)
                         ax.scatter(x_next, fy_next, color=iter_color, s=36, alpha=0.9, zorder=5)
                     except Exception:
-                        # igual marcar el punto en el eje X aunque no se evalúe f(x_next)
+                        # igual marcar el punto en el eje X aunque no se evalÃºe f(x_next)
                         ax.scatter(x_next, 0.0, color=iter_color, s=30, alpha=0.7, zorder=4)
                 except Exception:
                     pass
             try:
                 r_x = float(raiz)
                 marker = markers[i % len(markers)]
-                ax.scatter([r_x], [0.0], marker=marker, color=color, s=120, label=f"Raíz {i+1}", zorder=6)
+                ax.scatter([r_x], [0.0], marker=marker, color=color, s=120, label=f"RaÃ­z {i+1}", zorder=6)
             except Exception:
                 pass
 
@@ -437,7 +437,7 @@ class MetodoNewtonRaphsonWindow(bq.MetodoBiseccionWindow):
 
     def _create_table_widget(self, pasos: List[NewtonRaphsonStep]) -> QTableWidget:
         table = QTableWidget()
-        headers = ["Iteración", "xₙ", "f(xₙ)", "f'(xₙ)", "xₙ₊₁", "Error |xₙ₊₁ - xₙ|"]
+        headers = ["IteraciÃ³n", "xâ", "f(xâ)", "f'(xâ)", "xâââ", "Error |xâââ - xâ|"]
         table.setColumnCount(len(headers))
         table.setHorizontalHeaderLabels(headers)
         table.setRowCount(len(pasos))
@@ -480,12 +480,12 @@ class MetodoNewtonRaphsonWindow(bq.MetodoBiseccionWindow):
         expr1, _a_txt, _b_txt, tol_txt, x0_txt = first_card.values()
         expr1 = (expr1 or "").strip()
         if not expr1:
-            QMessageBox.warning(self, "Aviso", "Ingresa la función f(x) en la primera raíz.")
+            QMessageBox.warning(self, "Aviso", "Ingresa la funciÃ³n f(x) en la primera raÃ­z.")
             return
         try:
             func = bq._compile_function(expr1)
         except Exception as exc:
-            QMessageBox.warning(self, "Aviso", f"La función en la primera raíz no es válida: {exc}")
+            QMessageBox.warning(self, "Aviso", f"La funciÃ³n en la primera raÃ­z no es vÃ¡lida: {exc}")
             return
 
         try:
@@ -493,7 +493,7 @@ class MetodoNewtonRaphsonWindow(bq.MetodoBiseccionWindow):
             if tol <= 0:
                 raise ValueError("La tolerancia debe ser positiva.")
         except Exception as exc:
-            QMessageBox.warning(self, "Aviso", f"Tolerancia inválida (primera raíz): {exc}")
+            QMessageBox.warning(self, "Aviso", f"Tolerancia invÃ¡lida (primera raÃ­z): {exc}")
             return
 
         guesses: List[float] = []
@@ -501,7 +501,7 @@ class MetodoNewtonRaphsonWindow(bq.MetodoBiseccionWindow):
             try:
                 guesses.append(bq._parse_numeric(x0_txt))
             except Exception as exc:
-                QMessageBox.warning(self, "Aviso", f"Punto inicial inválido (primera raíz): {exc}")
+                QMessageBox.warning(self, "Aviso", f"Punto inicial invÃ¡lido (primera raÃ­z): {exc}")
                 return
         else:
             dlg = bq.IntervalsDialog(self, func, start=-10.0, end=10.0, step=0.5)
@@ -538,17 +538,17 @@ class MetodoNewtonRaphsonWindow(bq.MetodoBiseccionWindow):
                 QMessageBox.warning(
                     self,
                     "Aviso",
-                    f"No se logró converger desde x₀ = {bq._format_number(guess)}: {exc}",
+                    f"No se logrÃ³ converger desde xâ = {bq._format_number(guess)}: {exc}",
                 )
         if skip_additional and not any_success:
-            QMessageBox.warning(self, "Aviso", "No se encontraron raíces con los valores sugeridos.")
+            QMessageBox.warning(self, "Aviso", "No se encontraron raÃ­ces con los valores sugeridos.")
             return
 
         if not skip_additional:
             for card_idx, card in enumerate(self.root_cards[1:], start=2):
                 _expr, _a_txt, _b_txt, _tol_txt, x_txt = card.values()
                 if not x_txt:
-                    QMessageBox.warning(self, "Aviso", f"La raíz #{card_idx} no tiene punto inicial. Se omitirá.")
+                    QMessageBox.warning(self, "Aviso", f"La raÃ­z #{card_idx} no tiene punto inicial. Se omitirÃ¡.")
                     continue
                 try:
                     x_guess = bq._parse_numeric(x_txt)
@@ -556,7 +556,7 @@ class MetodoNewtonRaphsonWindow(bq.MetodoBiseccionWindow):
                     QMessageBox.warning(
                         self,
                         "Aviso",
-                        f"Punto inicial inválido en la raíz #{card_idx}: {exc}",
+                        f"Punto inicial invÃ¡lido en la raÃ­z #{card_idx}: {exc}",
                     )
                     continue
                 try:
@@ -567,10 +567,9 @@ class MetodoNewtonRaphsonWindow(bq.MetodoBiseccionWindow):
                     QMessageBox.warning(
                         self,
                         "Aviso",
-                        f"No se pudo calcular la raíz #{card_idx} (x₀ = {x_guess}): {exc}",
+                        f"No se pudo calcular la raÃ­z #{card_idx} (xâ = {x_guess}): {exc}",
                     )
                     continue
-
         unique_results = []
         seen = set()
         for item in resultados:
@@ -583,8 +582,9 @@ class MetodoNewtonRaphsonWindow(bq.MetodoBiseccionWindow):
             seen.add(key)
             unique_results.append(item)
         resultados = unique_results
+        resultados = self._filter_results_by_sign(resultados)
         if not resultados:
-            QMessageBox.information(self, "Resultados", "No se encontraron raíces.")
+            QMessageBox.information(self, "Resultados", "No se encontraron raices que coincidan con el filtro seleccionado.")
             return
 
         super()._render_resultados(resultados)
@@ -604,25 +604,25 @@ class MetodoNewtonRaphsonWindow(bq.MetodoBiseccionWindow):
                 break
         for card_widget, (_idx, _expr, pasos, raiz, fc, iteraciones, _ap) in zip(cards, resultados):
             labels = card_widget.findChildren(QLabel)
-            summary_label = next((lbl for lbl in labels if "El método converge" in (lbl.text() or "")), None)
+            summary_label = next((lbl for lbl in labels if "El mÃ©todo converge" in (lbl.text() or "")), None)
             if summary_label is not None:
                 tol_txt = bq._format_number(tol)
                 err = abs(fc)
                 err_txt = bq._format_number(err)
-                indicator = "✓ dentro del límite" if err <= tol else "✗ fuera del límite"
+                indicator = "â dentro del lÃ­mite" if err <= tol else "â fuera del lÃ­mite"
                 summary_lines = [
-                    f"El método converge con {iteraciones} iteraciones.",
-                    f"La raíz es: {bq._format_number(raiz)}.",
-                    f"Tolerancia: {tol_txt} — Error alcanzado: {err_txt} ({indicator})",
+                    f"El mÃ©todo converge con {iteraciones} iteraciones.",
+                    f"La raÃ­z es: {bq._format_number(raiz)}.",
+                    f"Tolerancia: {tol_txt} â Error alcanzado: {err_txt} ({indicator})",
                 ]
-                # Intentar obtener la derivada simbólica de la función y mostrarla.
+                # Intentar obtener la derivada simbÃ³lica de la funciÃ³n y mostrarla.
                 try:
                     try:
                         import sympy as _sp
                     except Exception:
                         _sp = None
                     if _sp is not None:
-                        # Preparar expresión similar a cómo se procesa para evaluación
+                        # Preparar expresiÃ³n similar a cÃ³mo se procesa para evaluaciÃ³n
                         cleaned = bq._normalize_expression(_expr or "")
                         # Manejar igualdades del tipo expr = 0 -> (left)-(right)
                         if "=" in cleaned:
@@ -640,7 +640,7 @@ class MetodoNewtonRaphsonWindow(bq.MetodoBiseccionWindow):
                             try:
                                 d_tmp = bq.re.sub(r"\*\*\(([^)]*)\)", r"^(\1)", d_str)
                                 d_tmp = bq.re.sub(r"\*\*([+-]?\d+)", r"^\1", d_tmp)
-                                # Quitar asterisco cuando es multiplicación entre coeficiente y variable/parentesis: 15*x -> 15x, 3*(x+1) -> 3(x+1)
+                                # Quitar asterisco cuando es multiplicaciÃ³n entre coeficiente y variable/parentesis: 15*x -> 15x, 3*(x+1) -> 3(x+1)
                                 try:
                                     d_tmp = bq.re.sub(r"(\d)\s*\*\s*(?=[A-Za-z(])", r"\1", d_tmp)
                                     d_tmp = bq.re.sub(r"\)\s*\*\s*(?=[A-Za-z(])", r")", d_tmp)
@@ -649,13 +649,13 @@ class MetodoNewtonRaphsonWindow(bq.MetodoBiseccionWindow):
                                 d_display = bq.superscriptify(d_tmp)
                             except Exception:
                                 d_display = d_str
-                            summary_lines.append(f"Derivada simbólica: f'(x) = {d_display}")
+                            summary_lines.append(f"Derivada simbÃ³lica: f'(x) = {d_display}")
                         except Exception:
                             # Si sympify falla, no interrumpir el flujo
                             pass
                     else:
                         # SymPy no instalado: informar al usuario discretamente
-                        summary_lines.append("Derivada simbólica: (instala SymPy para verla)")
+                        summary_lines.append("Derivada simbÃ³lica: (instala SymPy para verla)")
                 except Exception:
                     pass
                 summary_label.setText("\n".join(summary_lines))
@@ -664,7 +664,7 @@ class MetodoNewtonRaphsonWindow(bq.MetodoBiseccionWindow):
                 if pasos:
                     x0 = pasos[0].x
                     start_label.setText(
-                        f"Iteraciones generadas a partir de x₀ = {bq._format_number(x0)}."
+                        f"Iteraciones generadas a partir de xâ = {bq._format_number(x0)}."
                     )
                 else:
                     start_label.setText("Iteraciones generadas desde tu punto inicial.")

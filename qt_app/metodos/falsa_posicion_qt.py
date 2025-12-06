@@ -28,7 +28,7 @@ def _run_false_position(
     fa = func(a)
     fb = func(b)
     if not (fa * fb < 0):
-        raise ValueError("El intervalo inicial debe contener la raíz (f(a) * f(b) < 0).")
+        raise ValueError("El intervalo inicial debe contener la raÃ­z (f(a) * f(b) < 0).")
 
     steps: List[FalsePositionStep] = []
     iteration = 0
@@ -50,24 +50,24 @@ def _run_false_position(
             a = c
             fa = fc
 
-    raise ValueError("El método excedió el máximo de iteraciones permitidas.")
+    raise ValueError("El mÃ©todo excediÃ³ el mÃ¡ximo de iteraciones permitidas.")
 
 
 class MetodoFalsaPosicionWindow(bq.MetodoBiseccionWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
-        # Ajustar títulos y textos al método
-        self.setWindowTitle("Método de Falsa Posición")
+        # Ajustar tÃ­tulos y textos al mÃ©todo
+        self.setWindowTitle("MÃ©todo de Falsa PosiciÃ³n")
         try:
-            # Cambiar el título visible dentro de la tarjeta principal
+            # Cambiar el tÃ­tulo visible dentro de la tarjeta principal
             for lbl in self.findChildren(QLabel):
                 txt = (lbl.text() or "").strip().lower()
                 if "bisecci" in txt:
-                    lbl.setText("Método de Falsa Posición")
+                    lbl.setText("MÃ©todo de Falsa PosiciÃ³n")
         except Exception:
             pass
         try:
-            self.btn_calcular.setText("Calcular falsa posición")
+            self.btn_calcular.setText("Calcular falsa posiciÃ³n")
         except Exception:
             pass
 
@@ -83,12 +83,12 @@ class MetodoFalsaPosicionWindow(bq.MetodoBiseccionWindow):
         expr1, a1_txt, b1_txt, tol1_txt, approx1_txt = first_card.values()
         expr1 = (expr1 or "").strip()
         if not expr1:
-            QMessageBox.warning(self, "Aviso", "Ingresa la función f(x) en la primera raíz.")
+            QMessageBox.warning(self, "Aviso", "Ingresa la funciÃ³n f(x) en la primera raÃ­z.")
             return
         try:
             func = bq._compile_function(expr1)
         except Exception as exc:
-            QMessageBox.warning(self, "Aviso", f"La función en la primera raíz no es válida: {exc}")
+            QMessageBox.warning(self, "Aviso", f"La funciÃ³n en la primera raÃ­z no es vÃ¡lida: {exc}")
             return
 
         try:
@@ -96,7 +96,7 @@ class MetodoFalsaPosicionWindow(bq.MetodoBiseccionWindow):
             if tol <= 0:
                 raise ValueError("La tolerancia debe ser positiva.")
         except Exception as exc:
-            QMessageBox.warning(self, "Aviso", f"Tolerancia inválida (primera raíz): {exc}")
+            QMessageBox.warning(self, "Aviso", f"Tolerancia invÃ¡lida (primera raÃ­z): {exc}")
             return
 
         approx1_value = None
@@ -106,27 +106,27 @@ class MetodoFalsaPosicionWindow(bq.MetodoBiseccionWindow):
             except Exception:
                 approx1_value = None
 
-        # Primera raíz: permite detección automática si no hay [a,b]
+        # Primera raÃ­z: permite detecciÃ³n automÃ¡tica si no hay [a,b]
         if a1_txt and b1_txt:
             try:
                 a1 = bq._parse_numeric(a1_txt)
                 b1 = bq._parse_numeric(b1_txt)
             except Exception as exc:
-                QMessageBox.warning(self, "Aviso", f"Intervalo inválido (primera raíz): {exc}")
+                QMessageBox.warning(self, "Aviso", f"Intervalo invÃ¡lido (primera raÃ­z): {exc}")
                 return
             try:
                 pasos, raiz, fc, iteraciones = _run_false_position(func, a1, b1, tol)
                 resultados.append((display_idx, expr1, pasos, raiz, fc, iteraciones, approx1_value))
                 display_idx += 1
             except Exception as exc:
-                QMessageBox.warning(self, "Aviso", f"No se pudo calcular la raíz (intervalo [{a1}, {b1}]): {exc}")
+                QMessageBox.warning(self, "Aviso", f"No se pudo calcular la raÃ­z (intervalo [{a1}, {b1}]): {exc}")
         else:
             dlg = bq.IntervalsDialog(self, func, start=-10.0, end=10.0, step=0.5)
             if dlg.exec() != QDialog.Accepted:
                 return
             intervals = dlg.get_intervals()
             if not intervals:
-                QMessageBox.warning(self, "Aviso", "No se detectaron intervalos donde la función cambie de signo.")
+                QMessageBox.warning(self, "Aviso", "No se detectaron intervalos donde la funciÃ³n cambie de signo.")
                 return
             # Rellenar los text boxes de los intervalos detectados en las tarjetas
             try:
@@ -152,33 +152,33 @@ class MetodoFalsaPosicionWindow(bq.MetodoBiseccionWindow):
                     display_idx += 1
                     any_success = True
                 except Exception as exc:
-                    QMessageBox.warning(self, "Aviso", f"Falsa posición en [{a}, {b}] falló: {exc}")
+                    QMessageBox.warning(self, "Aviso", f"Falsa posiciÃ³n en [{a}, {b}] fallÃ³: {exc}")
                     continue
             if not any_success:
-                QMessageBox.warning(self, "Aviso", "No se encontraron raíces en los intervalos detectados.")
+                QMessageBox.warning(self, "Aviso", "No se encontraron raÃ­ces en los intervalos detectados.")
                 return
 
-        # Raíces adicionales: reutilizan expr1 y tol
+        # RaÃ­ces adicionales: reutilizan expr1 y tol
         for card_idx, card in enumerate(self.root_cards[1:], start=2):
             _expr, a_txt, b_txt, _tol_txt, _approx_txt = card.values()
             if not (a_txt and b_txt):
-                QMessageBox.warning(self, "Aviso", f"La raíz #{card_idx} no tiene intervalo. Se omitirá.")
+                QMessageBox.warning(self, "Aviso", f"La raÃ­z #{card_idx} no tiene intervalo. Se omitirÃ¡.")
                 continue
             try:
                 a = bq._parse_numeric(a_txt)
                 b = bq._parse_numeric(b_txt)
             except Exception as exc:
-                QMessageBox.warning(self, "Aviso", f"Intervalo inválido en la raíz #{card_idx}: {exc}")
+                QMessageBox.warning(self, "Aviso", f"Intervalo invÃ¡lido en la raÃ­z #{card_idx}: {exc}")
                 continue
             try:
                 pasos, raiz, fc, iteraciones = _run_false_position(func, a, b, tol)
                 resultados.append((display_idx, expr1, pasos, raiz, fc, iteraciones, None))
                 display_idx += 1
             except Exception as exc:
-                QMessageBox.warning(self, "Aviso", f"No se pudo calcular la raíz #{card_idx} (intervalo [{a}, {b}]): {exc}")
+                QMessageBox.warning(self, "Aviso", f"No se pudo calcular la raÃ­z #{card_idx} (intervalo [{a}, {b}]): {exc}")
                 continue
 
-        # Quitar duplicados por valor de ra�z
+        # Quitar duplicados por valor de raíz
         _unique_res = []
         _seen_keys = set()
         for _it in resultados:
@@ -191,8 +191,9 @@ class MetodoFalsaPosicionWindow(bq.MetodoBiseccionWindow):
             _seen_keys.add(_key)
             _unique_res.append(_it)
         resultados = _unique_res
+        resultados = self._filter_results_by_sign(resultados)
         if not resultados:
-            QMessageBox.information(self, "Resultados", "No se encontraron raíces para los intervalos ingresados.")
+            QMessageBox.information(self, "Resultados", "No se encontraron raices que coincidan con el filtro seleccionado.")
             return
 
         self._render_resultados(resultados)

@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QFrame,
     QLineEdit,
+    QComboBox,
     QScrollArea,
     QGridLayout,
     QMessageBox,
@@ -1174,6 +1175,21 @@ class MetodoBiseccionWindow(QMainWindow):
         self.forms_layout = QVBoxLayout(self.forms_container)
         self.forms_layout.setContentsMargins(0, 0, 0, 0)
         self.forms_layout.setSpacing(14)
+        self.sign_filter = None
+        if not getattr(self, "_skip_sign_filter", False):
+            try:
+                row = QHBoxLayout()
+                row.setSpacing(8)
+                self.sign_filter = QComboBox()
+                self.sign_filter.addItem("Todas las raices", "all")
+                self.sign_filter.addItem("Solo raices positivas", "positive")
+                self.sign_filter.addItem("Solo raices negativas", "negative")
+                row.addWidget(QLabel("Mostrar:"))
+                row.addWidget(self.sign_filter, 1)
+                row.addStretch(1)
+                self.forms_layout.addLayout(row)
+            except Exception:
+                self.sign_filter = None
         card_layout.addWidget(self.forms_container, 1)
         # Acciones al final del formulario
         actions_row = QHBoxLayout()
@@ -1420,12 +1436,36 @@ class MetodoBiseccionWindow(QMainWindow):
             _seen_keys.add(_key)
             _unique_res.append(_it)
         resultados = _unique_res
+        resultados = self._filter_results_by_sign(resultados)
         if not resultados:
-            QMessageBox.information(self, "Resultados", "No se encontraron raíces para los intervalos ingresados.")
+            QMessageBox.information(self, "Resultados", "No se encontraron raices que coincidan con el filtro seleccionado.")
             return
 
         self._render_resultados(resultados)
         self._draw_results_on_canvas(resultados)
+
+    def _filter_results_by_sign(self, resultados):
+        if not resultados:
+            return resultados
+        try:
+            mode = self.sign_filter.currentData() if getattr(self, "sign_filter", None) is not None else "all"
+        except Exception:
+            mode = "all"
+        if mode not in ("positive", "negative"):
+            return resultados
+        filtrados = []
+        for item in resultados:
+            raiz = item[3]
+            try:
+                value = float(raiz)
+            except Exception:
+                filtrados.append(item)
+                continue
+            if mode == "positive" and value >= 0:
+                filtrados.append(item)
+            elif mode == "negative" and value <= 0:
+                filtrados.append(item)
+        return filtrados
 
     def _create_table_widget(self, pasos: List[BisectionStep]) -> QTableWidget:
         table = QTableWidget()
