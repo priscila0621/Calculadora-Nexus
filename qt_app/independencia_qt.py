@@ -1,6 +1,7 @@
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QScrollArea, QGridLayout, QLineEdit, QTextEdit, QMessageBox, QFrame
+    QScrollArea, QGridLayout, QLineEdit, QTextEdit, QMessageBox, QFrame,
+    QComboBox,
 )
 from PySide6.QtCore import Qt
 from fractions import Fraction
@@ -46,6 +47,14 @@ class IndependenciaWindow(QMainWindow):
         self.grid.setHorizontalSpacing(8); self.grid.setVerticalSpacing(4)
         self.grid.setAlignment(Qt.AlignTop)
         self.scroll.setWidget(self.gridw)
+
+        metodo_row = QHBoxLayout(); lay.addLayout(metodo_row)
+        metodo_row.addWidget(QLabel("Método:"))
+        self.metodo_combo = QComboBox()
+        self.metodo_combo.addItem("Gauss-Jordan", "gauss")
+        self.metodo_combo.addItem("Determinante (cuadrada)", "determinante")
+        metodo_row.addWidget(self.metodo_combo)
+        metodo_row.addStretch(1)
 
         btns = QHBoxLayout(); lay.addLayout(btns)
         self.btn_check_cols = QPushButton("Verificar columnas")
@@ -119,7 +128,8 @@ class IndependenciaWindow(QMainWindow):
                 vectores = [fila for fila in matriz]
             else:
                 vectores = [[matriz[i][j] for i in range(f)] for j in range(c)]
-            ok, texto = son_linealmente_independientes(vectores)
+            metodo = self.metodo_combo.currentData() or "gauss"
+            ok, texto = son_linealmente_independientes(vectores, metodo=metodo)
 
             if ok:
                 self.status_label.setText("Linealmente INDEPENDIENTE")
@@ -149,10 +159,18 @@ class IndependenciaWindow(QMainWindow):
                     }
                     """
                 )
-            self.status_label.setVisible(True)
+                self.status_label.setVisible(True)
+
+            header_lines = []
+            if orientacion == "fila":
+                header_lines.append("Modo: vectores fila (se toman las filas como vectores).")
+            else:
+                header_lines.append("Modo: vectores columna (se toman las columnas como vectores).")
+            metodo_desc = "Gauss-Jordan (sistema homogéneo)" if metodo == "gauss" else "Determinante (col=vec)"
+            header_lines.append(f"Método: {metodo_desc}")
 
             self.out.clear()
-            self.out.insertPlainText(texto)
+            self.out.insertPlainText("\n".join(header_lines) + "\n\n" + texto)
         except Exception as exc:
             QMessageBox.warning(self, "Aviso", f"No se pudo verificar: {exc}")
 

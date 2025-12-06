@@ -6,6 +6,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from fractions import Fraction
 from math import gcd
+from determinante_matriz_app import determinante_con_pasos
 
 
 
@@ -35,7 +36,7 @@ def son_multiplos(v1, v2):
 
 
 # ---------- Función de independencia ----------
-def son_linealmente_independientes(vectores):
+def son_linealmente_independientes(vectores, metodo="gauss"):
     # ---------- utilidades ----------
     def toF(x):
         return Fraction(x).limit_denominator()
@@ -59,6 +60,9 @@ def son_linealmente_independientes(vectores):
             der = f"{fmt_frac(fila[-1]):>7}"
             filas_txt.append("[ " + izq + "  |  " + der + " ]")
         return "\n".join(filas_txt)
+
+    # Normaliza método pedido
+    metodo = (metodo or "gauss").lower()
 
     # ---------- datos base ----------
     n = len(vectores[0])     # dimensión
@@ -84,7 +88,7 @@ def son_linealmente_independientes(vectores):
         else:
             reglas_aplicadas.append("• Un conjunto de dos vectores {v₁, v₂} es linealmente independiente si y solo si ninguno de los vectores es un múltiplo del otro.")
 
-    if p <= 2 and reglas_aplicadas:
+    if p <= 2 and reglas_aplicadas and not (metodo == "determinante" and p == n):
         resultado += "📘 Reglas aplicadas:\n" + "\n".join(reglas_aplicadas) + "\n\n"
         if any("es linealmente dependiente" in r for r in reglas_aplicadas):
             resultado += "❌ El conjunto es linealmente DEPENDIENTE.\n"
@@ -92,6 +96,28 @@ def son_linealmente_independientes(vectores):
         else:
             resultado += "✅ El conjunto es linealmente INDEPENDIENTE.\n"
             return True, resultado
+
+    # ---------- método por determinante (opcional) ----------
+    if metodo == "determinante":
+        if p != n:
+            reglas_aplicadas.append("• El método del determinante solo aplica cuando la matriz es cuadrada. Se usará Gauss-Jordan automáticamente.")
+            metodo = "gauss"
+        else:
+            reglas_actuales = list(reglas_aplicadas)
+            matriz_det = [[toF(vectores[j][i]) for j in range(p)] for i in range(n)]
+            det_val, pasos_det = determinante_con_pasos(matriz_det)
+
+            resultado = ""
+            if reglas_actuales:
+                resultado += "📘 Reglas aplicadas:\n" + "\n".join(reglas_actuales) + "\n\n"
+            resultado += "📗 Procedimiento por determinante (columnas = vectores):\n\n"
+            resultado += "\n".join(pasos_det) + "\n\n"
+            resultado += f"det(A) = {fmt_frac(det_val)}\n\n"
+            if det_val != 0:
+                resultado += "Como det(A) != 0, el conjunto es linealmente INDEPENDIENTE.\n"
+                return True, resultado
+            resultado += "Como det(A) = 0, el conjunto es linealmente DEPENDIENTE.\n"
+            return False, resultado
 
     # ---------- núcleo: SIEMPRE columnas = vectores ----------
     V = [[toF(vectores[j][i]) for j in range(p)] for i in range(n)]  # n x p
@@ -389,6 +415,15 @@ class IndependenciaLinealApp:
 
         abajo = ttk.Frame(frame, style="TFrame")
         abajo.pack(pady=5)
+
+        metodo_frame = ttk.LabelFrame(abajo, text="Método", padding=8)
+        metodo_frame.pack(side="left", padx=10)
+        self.metodo_var = tk.StringVar(value="gauss")
+        ttk.Radiobutton(metodo_frame, text="Gauss-Jordan", variable=self.metodo_var,
+                        value="gauss").pack(anchor="w", pady=1)
+        ttk.Radiobutton(metodo_frame, text="Determinante (matriz cuadrada)", variable=self.metodo_var,
+                        value="determinante").pack(anchor="w", pady=1)
+
         botones_frame = ttk.Frame(abajo, style="TFrame")
         botones_frame.pack(side="left", padx=10)
         ttk.Button(botones_frame, text="Vectores columna", style="Primary.TButton",
@@ -441,16 +476,20 @@ class IndependenciaLinealApp:
             # Tomamos cada fila ingresada como vector fila.
             vectores = [list(fila) for fila in zip(*vectores)]
 
-
-        independiente, justificacion = son_linealmente_independientes(vectores)
+        metodo_sel = self.metodo_var.get() if hasattr(self, "metodo_var") else "gauss"
+        independiente, justificacion = son_linealmente_independientes(vectores, metodo=metodo_sel)
 
 
         self.resultado.configure(state="normal")
         self.resultado.delete("1.0", tk.END)
         if orientacion == "fila":
-            self.resultado.insert(tk.END, "Modo: vectores fila (se toman las filas como vectores).\n\n")
+            self.resultado.insert(tk.END, "Modo: vectores fila (se toman las filas como vectores).\n")
         else:
-            self.resultado.insert(tk.END, "Modo: vectores columna (se toman las columnas como vectores).\n\n")
+            self.resultado.insert(tk.END, "Modo: vectores columna (se toman las columnas como vectores).\n")
+        if metodo_sel == "determinante":
+            self.resultado.insert(tk.END, "Método: determinante (usa det(A) con columnas = vectores).\n\n")
+        else:
+            self.resultado.insert(tk.END, "Método: Gauss-Jordan (sistema homogéneo c·v = 0).\n\n")
         self.resultado.insert(tk.END, justificacion)
         self.resultado.configure(state="disabled")
 
