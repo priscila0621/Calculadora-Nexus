@@ -1075,6 +1075,9 @@ class MetodoBiseccionWindow(QMainWindow):
         super().__init__(parent)
         self.setWindowTitle("Método de Bisección")
         self.root_cards: List[RootInputCard] = []
+        # Estado de la última gráfica para poder re-muestrear al hacer zoom
+        self._last_plot_kind = None
+        self._last_resultados = None
 
         # Un solo scroll para toda la ventana
         main_scroll = QScrollArea()
@@ -1783,6 +1786,133 @@ class MetodoBiseccionWindow(QMainWindow):
         except Exception:
             pass
 
+    def _store_plot_state(self, kind: str, resultados=None) -> None:
+        """Guardar qué se mostró por última vez para re-muestrear al hacer zoom."""
+        self._last_plot_kind = kind
+        self._last_resultados = list(resultados) if resultados is not None else None
+
+    def _refresh_plot_after_zoom(self, xlim: Tuple[float, float], ylim: Tuple[float, float]) -> None:
+        """Recalcula la gráfica usando el nuevo rango para que la curva no quede cortada."""
+        if not getattr(self, '_mpl_ready', False):
+            return
+        try:
+            mode = getattr(self, '_last_plot_kind', None)
+            if mode == 'results' and self._last_resultados:
+                self._redraw_results_with_range(self._last_resultados, xlim, ylim)
+            else:
+                self._redraw_live_with_range(xlim, ylim)
+        except Exception:
+            pass
+
+    def _generate_xs(self, x_min: float, x_max: float, num_points: int = 800):
+        try:
+            import numpy as np
+        except Exception:
+            np = None
+        if np is not None:
+            return np.linspace(x_min, x_max, num_points)
+        return [x_min + (x_max - x_min) * i / (num_points - 1) for i in range(num_points)]
+
+    def _redraw_live_with_range(self, xlim: Tuple[float, float], ylim: Tuple[float, float] | None = None) -> None:
+        if not getattr(self, '_mpl_ready', False):
+            return
+        plt = self._mpl['plt']
+        ax = self._mpl['ax']
+        ax.clear()
+        ax.grid(True, linestyle='--', alpha=0.3)
+        ax.set_xlabel("Eje X")
+        ax.set_ylabel("Eje Y")
+        ax.axhline(0.0, color='black', linewidth=0.9)
+
+        x_min, x_max = xlim
+        xs = self._generate_xs(x_min, x_max, 900)
+
+        plotted = False
+        for idx, card in enumerate(self.root_cards, start=1):
+            expr = (card.function_edit.text() or "").strip()
+            if not expr:
+                continue
+            try:
+                func = _compile_function(expr)
+            except Exception:
+                continue
+            ys = []
+            for x in xs:
+                try:
+                    y = func(float(x))
+                except Exception:
+                    y = float('nan')
+                ys.append(y)
+            ax.plot(xs, ys, label=f"f(x) #{idx}", linewidth=1.6, alpha=0.9)
+            try:
+                a = _parse_numeric(card.a_edit.text().strip())
+                b = _parse_numeric(card.b_edit.text().strip())
+                ax.axvspan(min(a, b), max(a, b), alpha=0.08)
+            except Exception:
+                pass
+            plotted = True
+
+        if plotted:
+            ax.legend()
+            ax.set_title("Vista previa: ajusta la función e intervalos")
+        else:
+            ax.set_title("Escribe f(x) para previsualizar la curva")
+
+        ax.set_xlim(x_min, x_max)
+        if ylim is not None:
+            ax.set_ylim(*ylim)
+        self._store_plot_state('live')
+        self._mpl['canvas'].draw_idle()
+
+    def _redraw_results_with_range(self, resultados, xlim: Tuple[float, float], ylim: Tuple[float, float] | None = None) -> None:
+        if not getattr(self, '_mpl_ready', False):
+            return
+        plt = self._mpl['plt']
+        ax = self._mpl['ax']
+        ax.clear()
+        ax.grid(True, linestyle='--', alpha=0.3)
+        ax.set_xlabel("Eje X")
+        ax.set_ylabel("Eje Y")
+        ax.axhline(0.0, color='black', linewidth=0.9)
+
+        x_min, x_max = xlim
+        xs = self._generate_xs(x_min, x_max, 900)
+        colors = plt.rcParams.get("axes.prop_cycle").by_key().get("color", [])
+        markers = ["o", "s", "^", "D", "v", "P", "X", "*", "+", "x"]
+
+        for i, (idx, expr, pasos, raiz, fc, iteraciones, approx_value) in enumerate(resultados):
+            try:
+                func = _compile_function(expr)
+            except Exception:
+                continue
+            ys = []
+            for x in xs:
+                try:
+                    y = func(float(x))
+                except Exception:
+                    y = float('nan')
+                ys.append(y)
+            color = colors[i % len(colors)] if colors else None
+            ax.plot(xs, ys, label=f"f(x) #{idx}", color=color, linewidth=1.6, alpha=0.9)
+            if pasos:
+                a0 = pasos[0].a
+                b0 = pasos[0].b
+                ax.axvspan(min(a0, b0), max(a0, b0), alpha=0.08, color=color)
+            try:
+                rx = float(raiz)
+                marker = markers[i % len(markers)]
+                ax.plot(rx, 0.0, marker=marker, color=color, markersize=10, label=f"Raíz {i+1}")
+            except Exception:
+                pass
+
+        ax.set_xlim(x_min, x_max)
+        if ylim is not None:
+            ax.set_ylim(*ylim)
+        ax.legend()
+        ax.set_title("Resultados de bisección")
+        self._store_plot_state('results', resultados)
+        self._mpl['canvas'].draw_idle()
+
     def _current_x_range(self):
         xs = []
         for card in self.root_cards:
@@ -1854,6 +1984,7 @@ class MetodoBiseccionWindow(QMainWindow):
             ax.set_title("Vista previa: ajusta la función e intervalos")
         else:
             ax.set_title("Escribe f(x) para previsualizar la curva")
+        self._store_plot_state('live')
         self._mpl['canvas'].draw_idle()
 
     def _draw_results_on_canvas(self, resultados):
@@ -1919,6 +2050,7 @@ class MetodoBiseccionWindow(QMainWindow):
         ax.set_xlim(x_min, x_max)
         ax.legend()
         ax.set_title("Resultados de bisección")
+        self._store_plot_state('results', resultados)
         self._mpl['canvas'].draw_idle()
 
     def _on_canvas_scroll(self, event):
@@ -1945,9 +2077,7 @@ class MetodoBiseccionWindow(QMainWindow):
             # Evitar colapsar a rangos inválidos
             if right - left < 1e-9 or top - bottom < 1e-9:
                 return
-            ax.set_xlim(left, right)
-            ax.set_ylim(bottom, top)
-            self._mpl['canvas'].draw_idle()
+            self._refresh_plot_after_zoom((left, right), (bottom, top))
         except Exception:
             pass
 

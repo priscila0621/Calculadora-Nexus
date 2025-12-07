@@ -272,6 +272,7 @@ class MetodoNewtonRaphsonWindow(bq.MetodoBiseccionWindow):
             ax.set_title("Ajusta la función y los valores iniciales")
         else:
             ax.set_title("Escribe f(x) para previsualizar la curva")
+        self._store_plot_state("live")
         self._mpl["canvas"].draw_idle()
 
     def _draw_results_on_canvas(self, resultados):
@@ -419,6 +420,192 @@ class MetodoNewtonRaphsonWindow(bq.MetodoBiseccionWindow):
         ax.set_xlim(x_min, x_max)
         ax.legend()
         ax.set_title("Resultados de Newton-Raphson")
+        self._store_plot_state("results", resultados)
+        self._mpl["canvas"].draw_idle()
+
+    def _redraw_live_with_range(self, xlim, ylim=None) -> None:
+        if not getattr(self, "_mpl_ready", False):
+            return
+        plt = self._mpl["plt"]
+        ax = self._mpl["ax"]
+        ax.clear()
+        ax.grid(True, linestyle="--", alpha=0.3)
+        ax.set_xlabel("Eje X")
+        ax.set_ylabel("Eje Y")
+        ax.axhline(0.0, color="black", linewidth=0.9)
+
+        x_min, x_max = xlim
+        try:
+            import numpy as np
+        except Exception:
+            np = None
+        xs = self._generate_xs(x_min, x_max, 900)
+
+        plotted = False
+        for idx, card in enumerate(self.root_cards, start=1):
+            expr = (card.function_edit.text() or "").strip()
+            if not expr:
+                continue
+            try:
+                func = bq._compile_function(expr)
+            except Exception:
+                continue
+            ys = []
+            for x in xs:
+                try:
+                    y = func(float(x))
+                except Exception:
+                    y = float("nan")
+                ys.append(y)
+            try:
+                if np is not None:
+                    yarr = np.array(ys, dtype=float)
+                    bad = ~np.isfinite(yarr)
+                    diffs = np.abs(np.diff(yarr))
+                    median = np.nanmedian(diffs) if diffs.size > 0 else 0.0
+                    thresh = max(1e3, median * 100.0)
+                    large_jump = np.concatenate(([False], diffs > thresh))
+                    mask = bad | large_jump
+                    yplot = yarr.copy()
+                    yplot[mask] = np.nan
+                    ax.plot(xs, yplot, label=f"f(x) #{idx}", linewidth=1.6, alpha=0.9)
+                else:
+                    yplot = list(ys)
+                    diffs = [abs(yplot[i+1] - yplot[i]) if (isinstance(yplot[i+1], float) and isinstance(yplot[i], float)) else float('nan') for i in range(len(yplot)-1)]
+                    finite_diffs = [d for d in diffs if not (d != d)]
+                    median = sorted(finite_diffs)[len(finite_diffs)//2] if finite_diffs else 0.0
+                    thresh = max(1e3, median * 100.0)
+                    for i, d in enumerate(diffs):
+                        try:
+                            if d > thresh:
+                                yplot[i+1] = float('nan')
+                        except Exception:
+                            yplot[i+1] = float('nan')
+                    ax.plot(xs, yplot, label=f"f(x) #{idx}", linewidth=1.6, alpha=0.9)
+            except Exception:
+                ax.plot(xs, ys, label=f"f(x) #{idx}", linewidth=1.6, alpha=0.9)
+            try:
+                x0 = bq._parse_numeric(card.approx_edit.text().strip())
+                ax.axvline(x0, color="#6E4B5E", linestyle=":", alpha=0.3)
+            except Exception:
+                pass
+            plotted = True
+
+        ax.set_xlim(x_min, x_max)
+        if ylim is not None:
+            ax.set_ylim(*ylim)
+        if plotted:
+            ax.legend()
+            ax.set_title("Ajusta la función y los valores iniciales")
+        else:
+            ax.set_title("Escribe f(x) para previsualizar la curva")
+        self._store_plot_state("live")
+        self._mpl["canvas"].draw_idle()
+
+    def _redraw_results_with_range(self, resultados, xlim, ylim=None) -> None:
+        if not getattr(self, "_mpl_ready", False):
+            return
+        plt = self._mpl["plt"]
+        ax = self._mpl["ax"]
+        ax.clear()
+        ax.grid(True, linestyle="--", alpha=0.3)
+        ax.set_xlabel("Eje X")
+        ax.set_ylabel("Eje Y")
+        ax.axhline(0.0, color="black", linewidth=0.9)
+
+        x_min, x_max = xlim
+        try:
+            import numpy as np
+        except Exception:
+            np = None
+        xs = self._generate_xs(x_min, x_max, 900)
+
+        colors = plt.rcParams.get("axes.prop_cycle").by_key().get("color", [])
+        markers = ["o", "s", "^", "D", "v", "P", "X", "*", "+", "x"]
+        iter_color = "#555555"
+
+        for i, (idx, expr, pasos, raiz, _fc, _it, _ap) in enumerate(resultados):
+            try:
+                func = bq._compile_function(expr)
+            except Exception:
+                continue
+            ys = []
+            for x in xs:
+                try:
+                    y = func(float(x))
+                except Exception:
+                    y = float("nan")
+                ys.append(y)
+            color = colors[i % len(colors)] if colors else None
+            try:
+                if np is not None:
+                    yarr = np.array(ys, dtype=float)
+                    bad = ~np.isfinite(yarr)
+                    diffs = np.abs(np.diff(yarr))
+                    median = np.nanmedian(diffs) if diffs.size > 0 else 0.0
+                    thresh = max(1e3, median * 100.0)
+                    large_jump = np.concatenate(([False], diffs > thresh))
+                    mask = bad | large_jump
+                    yplot = yarr.copy()
+                    yplot[mask] = np.nan
+                    ax.plot(xs, yplot, label=f"f(x) #{idx}", color=color, linewidth=1.6, alpha=0.9)
+                else:
+                    yplot = list(ys)
+                    diffs = [abs(yplot[i+1] - yplot[i]) if (isinstance(yplot[i+1], float) and isinstance(yplot[i], float)) else float('nan') for i in range(len(yplot)-1)]
+                    finite_diffs = [d for d in diffs if not (d != d)]
+                    median = sorted(finite_diffs)[len(finite_diffs)//2] if finite_diffs else 0.0
+                    thresh = max(1e3, median * 100.0)
+                    for i, d in enumerate(diffs):
+                        try:
+                            if d > thresh:
+                                yplot[i+1] = float('nan')
+                        except Exception:
+                            yplot[i+1] = float('nan')
+                    ax.plot(xs, yplot, label=f"f(x) #{idx}", color=color, linewidth=1.6, alpha=0.9)
+            except Exception:
+                ax.plot(xs, ys, label=f"f(x) #{idx}", color=color, linewidth=1.6, alpha=0.9)
+
+            for paso in pasos:
+                ax.scatter(paso.x, paso.fx, color=iter_color, s=50, alpha=0.9, zorder=5)
+                try:
+                    dfx = paso.dfx
+                    if np is not None:
+                        span = (x_max - x_min) if (x_max - x_min) != 0 else 1.0
+                        tpad = max(abs(paso.x) * 0.1, span * 0.08)
+                        txs = np.linspace(paso.x - tpad, paso.x + tpad, 80)
+                        tys = [paso.fx + dfx * (tx - paso.x) for tx in txs]
+                    else:
+                        span = (x_max - x_min) if (x_max - x_min) != 0 else 1.0
+                        tpad = max(abs(paso.x) * 0.1, span * 0.08)
+                        txs = [paso.x - tpad + (2 * tpad) * i / 79 for i in range(80)]
+                        tys = [paso.fx + dfx * (tx - paso.x) for tx in txs]
+                    ax.plot(txs, tys, color=iter_color, linestyle=(0, (3, 3)), linewidth=1.0, alpha=0.7, zorder=3)
+                except Exception:
+                    pass
+                try:
+                    x_next = paso.x_next
+                    ax.plot([paso.x, x_next], [paso.fx, 0.0], color=iter_color, linestyle='--', alpha=0.8, linewidth=1.0, zorder=4)
+                    try:
+                        fy_next = func(float(x_next))
+                        ax.plot([x_next, x_next], [0.0, fy_next], color=iter_color, linestyle=':', alpha=0.8, linewidth=1.0, zorder=4)
+                        ax.scatter(x_next, fy_next, color=iter_color, s=36, alpha=0.9, zorder=5)
+                    except Exception:
+                        ax.scatter(x_next, 0.0, color=iter_color, s=30, alpha=0.7, zorder=4)
+                except Exception:
+                    pass
+            try:
+                r_x = float(raiz)
+                marker = markers[i % len(markers)]
+                ax.scatter([r_x], [0.0], marker=marker, color=color, s=120, label=f"Raíz {i+1}", zorder=6)
+            except Exception:
+                pass
+
+        ax.set_xlim(x_min, x_max)
+        if ylim is not None:
+            ax.set_ylim(*ylim)
+        ax.legend()
+        ax.set_title("Resultados de Newton-Raphson")
+        self._store_plot_state("results", resultados)
         self._mpl["canvas"].draw_idle()
 
     def _create_table_widget(self, pasos: List[NewtonRaphsonStep]) -> QTableWidget:

@@ -336,6 +336,7 @@ class MetodoSecanteWindow(bq.MetodoBiseccionWindow):
 
         ax.legend()
         ax.set_title("Vista previa metodo de la secante")
+        self._store_plot_state("live")
         self._mpl["canvas"].draw_idle()
 
     def _create_table_widget(self, pasos: List[SecantStep]) -> QTableWidget:
@@ -700,4 +701,104 @@ class MetodoSecanteWindow(bq.MetodoBiseccionWindow):
             ax.set_ylim(y_min - pad_y, y_max + pad_y)
         ax.legend()
         ax.set_title("Resultados - Metodo de la secante")
+        self._store_plot_state("results", resultados)
+        self._mpl["canvas"].draw_idle()
+
+    def _redraw_live_with_range(self, xlim, ylim=None) -> None:
+        if not getattr(self, "_mpl_ready", False) or not self.root_cards:
+            return
+        expr = (self.root_cards[0].function_edit.text() or "").strip()
+        if not expr:
+            return
+        try:
+            func = bq._compile_function(expr)
+        except Exception:
+            return
+
+        plt = self._mpl["plt"]
+        ax = self._mpl["ax"]
+        ax.clear()
+        ax.grid(True, linestyle="--", alpha=0.3)
+        ax.axhline(0.0, color="black", linewidth=0.9)
+        ax.set_xlabel("Eje X")
+        ax.set_ylabel("Eje Y")
+
+        x_min, x_max = xlim
+        xs = self._generate_xs(x_min, x_max, 900)
+        ys = []
+        for x in xs:
+            try:
+                y = func(float(x))
+            except Exception:
+                y = float("nan")
+            ys.append(y)
+        ax.plot(xs, ys, label="f(x)", color="#b91c1c", linewidth=1.6, alpha=0.9)
+
+        first = self.root_cards[0]
+        try:
+            x0 = bq._parse_numeric(first.a_edit.text().strip())
+            x1 = bq._parse_numeric(first.b_edit.text().strip())
+            ax.scatter([x0, x1], [func(x0), func(x1)], color="#374151", s=60, zorder=5, label="Puntos iniciales")
+        except Exception:
+            pass
+
+        ax.set_xlim(x_min, x_max)
+        if ylim is not None:
+            ax.set_ylim(*ylim)
+        ax.legend()
+        ax.set_title("Vista previa metodo de la secante")
+        self._store_plot_state("live")
+        self._mpl["canvas"].draw_idle()
+
+    def _redraw_results_with_range(self, resultados, xlim, ylim=None) -> None:
+        if not getattr(self, "_mpl_ready", False):
+            return
+        plt = self._mpl["plt"]
+        ax = self._mpl["ax"]
+        ax.clear()
+        ax.grid(True, linestyle="--", alpha=0.3)
+        ax.set_xlabel("Eje X")
+        ax.set_ylabel("Eje Y")
+        ax.axhline(0.0, color="black", linewidth=0.9)
+
+        x_min, x_max = xlim
+        xs_plot = self._generate_xs(x_min, x_max, 900)
+        colors = plt.rcParams.get("axes.prop_cycle").by_key().get("color", [])
+        iter_color = "#555555"
+
+        for i, (idx, expr, pasos, raiz, _fc, _it, _ap) in enumerate(resultados):
+            try:
+                func = bq._compile_function(expr)
+            except Exception:
+                continue
+            ys = []
+            for x in xs_plot:
+                try:
+                    y = func(float(x))
+                except Exception:
+                    y = float("nan")
+                ys.append(y)
+            color = colors[i % len(colors)] if colors else None
+            ax.plot(xs_plot, ys, label=f"f(x) #{idx}", color=color, linewidth=1.6, alpha=0.9)
+
+            for paso in pasos:
+                try:
+                    ax.scatter([paso.x_prev, paso.x_curr], [paso.fx_prev, paso.fx_curr], color=iter_color, s=50, alpha=0.9, zorder=5)
+                    ax.plot([paso.x_prev, paso.x_curr], [paso.fx_prev, paso.fx_curr], color=iter_color, linestyle=(0, (3, 3)), linewidth=1.0, alpha=0.7, zorder=3)
+                    ax.plot([paso.x_curr, paso.x_next], [paso.fx_curr, 0.0], color=iter_color, linestyle="--", alpha=0.8, linewidth=1.0, zorder=4)
+                    ax.scatter(paso.x_next, 0.0, color=iter_color, s=36, alpha=0.9, zorder=5)
+                except Exception:
+                    pass
+            try:
+                r_x = float(raiz)
+                ax.scatter([r_x], [0.0], marker="o", color=color, s=120, label=f"Raiz {i+1}", zorder=6)
+            except Exception:
+                pass
+
+        ax.set_xlim(x_min, x_max)
+        if ylim is not None:
+            ax.set_ylim(*ylim)
+        ax.legend()
+        ax.set_title("Resultados - Metodo de la secante")
+        self._store_plot_state("results", resultados)
         self._mpl["canvas"].draw_idle()
