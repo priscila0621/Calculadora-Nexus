@@ -676,8 +676,30 @@ class OperacionesMatricesWindow(QMainWindow):
                 return {"type": "matrix", "value": [[val * x for x in row] for row in b["value"]]}
         if tb == "scalar":
             return self._mul(b, a)
+        # Producto vector (columna) * vector (fila) -> matriz (outer product)
+        if ta == "vector" and tb == "vector":
+            va = a["value"]; vb = b["value"]
+            if len(va) != len(vb):
+                raise ValueError("Dimensiones incompatibles para vector * vector (outer product).")
+            res = [[va[i] * vb[j] for j in range(len(vb))] for i in range(len(va))]
+            return {"type": "matrix", "value": res}
+        # Permitir vector fila * matriz (producto de (x^T)*(A^T))
+        if ta == "vector" and tb == "matrix":
+            v = a["value"]
+            B = b["value"]
+            n = len(v)
+            m = len(B)
+            p = len(B[0]) if m else 0
+            if m == n:
+                # Producto vector fila (1xn) por matriz (nxp) = vector fila (1xp)
+                res = []
+                for j in range(p):
+                    res.append(sum(v[i] * B[i][j] for i in range(n)))
+                return {"type": "vector", "value": res}
+            else:
+                raise ValueError("Dimensiones incompatibles para vector * matriz (vector fila por matriz).")
         if ta == "vector":
-            raise ValueError("Solo se permite matriz * vector, no vector * matriz.")
+            raise ValueError("Solo se permite matriz * vector, no vector * matriz. Si necesitas (x^T)*(A^T), verifica que las dimensiones sean compatibles.")
         if ta == "matrix" and tb == "vector":
             A = a["value"]; v = b["value"]
             m = len(A); n = len(A[0]) if m else 0
@@ -1105,6 +1127,13 @@ class OperacionesMatricesWindow(QMainWindow):
                 elif a['type'] == 'vector' and b['type'] == 'scalar':
                     for i, val in enumerate(res['value']):
                         log.append(f"  v[{i+1}]: {_fmt(a['value'][i])} * {_fmt(b['value'])} = {_fmt(val)}")
+                elif a['type'] == 'vector' and b['type'] == 'vector':
+                    m = len(res['value']); n = len(res['value'][0]) if m else 0
+                    for i in range(m):
+                        parts = []
+                        for j in range(n):
+                            parts.append(f"{_fmt(a['value'][i])}*{_fmt(b['value'][j])}={_fmt(res['value'][i][j])}")
+                        log.append(f"  fila {i+1}: " + ", ".join(parts))
                 return res, f"{a_label}*{b_label}"
         if kind == "^T":
             val, val_label = self._eval_with_log(node[1], log)
@@ -1236,6 +1265,8 @@ class OperacionesMatricesWindow(QMainWindow):
                 return "Producto matriz por vector (filas por columnas)."
             if tL == "matrix" and tR == "matrix":
                 return "Producto de matrices (filas por columnas)."
+            if tL == "vector" and tR == "vector":
+                return "Producto vector (columna) por vector (fila) -> matriz (outer product)."
             return "Producto de expresiones (aplica reglas por termino)."
         return "Operacion compuesta (se muestran los pasos detallados)."
 
