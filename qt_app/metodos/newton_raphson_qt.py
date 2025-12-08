@@ -677,7 +677,7 @@ class MetodoNewtonRaphsonWindow(bq.MetodoBiseccionWindow):
                 QMessageBox.warning(self, "Aviso", f"Punto inicial inválido (primera raíz): {exc}")
                 return
         else:
-            dlg = bq.IntervalsDialog(self, func, start=-10.0, end=10.0, step=0.5)
+            dlg = bq.IntervalsDialog(self, func, start=-10.0, end=10.0, step=0.25)
             if dlg.exec() != QDialog.Accepted:
                 return
             intervals = dlg.get_intervals()

@@ -612,11 +612,60 @@ def _detect_sign_change_intervals(
 ) -> List[Tuple[float, float]]:
     """
     Scanea el rango [start, end] con paso `step` y devuelve una lista de
-    intervalos (a, b) donde la función cambia de signo (f(a)*f(b) < 0).
+    intervalos (a, b) donde la función cambia de signo (f(a)*f(b) < 0),
+    intentando descartar falsos positivos por asíntotas verticales y capturar
+    raíces que caen justo en los puntos muestreados.
 
-    Valores que provocan excepciones o no finitos se ignoran.
+    Valores que provocan excepciones o no finitos se ignoran; si dentro del
+    intervalo se detecta un valor no finito o muy grande, se asume que el
+    cambio de signo es por discontinuidad y se descarta.
     """
     intervals: List[Tuple[float, float]] = []
+    zero_hits: List[float] = []
+    zero_tol = 1e-6
+
+    def _looks_like_root(a: float, b: float, fa: float, fb: float) -> bool:
+        """Evalúa si el cambio de signo parece ser raíz y no salto vertical.
+
+        Muestrea puntos interiores; si alguno es no finito o el valor mínimo
+        absoluto no es significativamente menor que el máximo, se asume que
+        proviene de una discontinuidad (p. ej. tan(x)).
+        """
+
+        width = max(abs(b - a), 1e-12)
+        sample_count = 7
+        inner_points = [a + width * i / (sample_count - 1) for i in range(1, sample_count - 1)]
+        abs_vals: List[float] = []
+        for p in inner_points:
+            try:
+                val = func(float(p))
+            except Exception:
+                return False
+            if not isfinite(val):
+                return False
+            abs_vals.append(abs(val))
+
+        if not abs_vals:
+            return False
+
+        min_abs = min(abs_vals)
+        max_abs = max(abs_vals)
+
+        # Si encontramos un valor muy pequeño, es muy probable que haya raíz.
+        if min_abs <= max(zero_tol, 1e-4):
+            return True
+
+        # Si los valores son grandes y no nos acercamos a cero, es probable que sea salto.
+        if min_abs > 2.0 and max_abs > 10.0:
+            return False
+
+        # Si hay valores extremadamente grandes en ambas orillas, sospecha de salto.
+        if max_abs > 1e6 and min_abs > 1.0:
+            return False
+
+        # Umbral relajado para curvas empinadas (tan, cot, etc.).
+        ratio = min_abs / (max_abs + 1e-12)
+        return ratio <= 0.2
     if step <= 0:
         raise ValueError("El paso debe ser positivo.")
     # Asegurar start <= end
@@ -629,27 +678,54 @@ def _detect_sign_change_intervals(
     if xs[-1] < end:
         xs.append(end)
 
-    prev_x = None
-    prev_y = None
+    prev_sign_x = None
+    prev_sign_y = None
     for x in xs:
         try:
             y = func(float(x))
             if not isfinite(y):
-                # ignorar
-                prev_x, prev_y = x, None
+                prev_sign_x, prev_sign_y = None, None
                 continue
         except Exception:
-            prev_x, prev_y = x, None
+            prev_sign_x, prev_sign_y = None, None
             continue
 
-        if prev_x is not None and prev_y is not None:
+        if abs(y) < zero_tol:
+            zero_hits.append(x)
+            # Mantener el último signo no nulo para no perder cambios reales.
+            continue
+
+        if prev_sign_x is not None and prev_sign_y is not None:
             try:
-                if prev_y * y < 0:
-                    intervals.append((prev_x, x))
+                if prev_sign_y * y < 0 and _looks_like_root(prev_sign_x, x, prev_sign_y, y):
+                    intervals.append((prev_sign_x, x))
             except Exception:
                 pass
 
-        prev_x, prev_y = x, y
+        prev_sign_x, prev_sign_y = x, y
+
+    # Agregar ventanas alrededor de los puntos donde f(x) ≈ 0 para capturar
+    # raíces que caen exactamente en la malla de muestreo.
+    if zero_hits:
+        pad = max(step * 0.25, 1e-3)
+        for zh in zero_hits:
+            intervals.append((zh - pad, zh + pad))
+
+    # Unir intervalos superpuestos o adyacentes para evitar duplicados.
+    if not intervals:
+        return intervals
+    intervals.sort(key=lambda t: t[0])
+    merged: List[Tuple[float, float]] = []
+    cur_a, cur_b = intervals[0]
+    for a, b in intervals[1:]:
+        if a <= cur_b + 1e-9:
+            cur_b = max(cur_b, b)
+        else:
+            merged.append((cur_a, cur_b))
+            cur_a, cur_b = a, b
+    merged.append((cur_a, cur_b))
+
+    return merged
 
     return intervals
 
@@ -658,7 +734,7 @@ class IntervalsDialog(QDialog):
     """Dialogo que muestra los intervalos detectados y permite ajustar
     start/end/step antes de confirmar."""
 
-    def __init__(self, parent, func: Callable[[float], float], start: float = -10.0, end: float = 10.0, step: float = 0.5):
+    def __init__(self, parent, func: Callable[[float], float], start: float = -10.0, end: float = 10.0, step: float = 0.25):
         super().__init__(parent)
         self.setWindowTitle("Intervalos detectados")
         self.resize(560, 420)
@@ -1367,7 +1443,7 @@ class MetodoBiseccionWindow(QMainWindow):
                 QMessageBox.warning(self, "Aviso", f"No se pudo calcular la raíz (intervalo [{a1}, {b1}]): {exc}")
         else:
             # Detección automática para la primera raíz si no hay intervalo
-            dlg = IntervalsDialog(self, func, start=-10.0, end=10.0, step=0.5)
+            dlg = IntervalsDialog(self, func, start=-10.0, end=10.0, step=0.25)
             if dlg.exec() != QDialog.Accepted:
                 return
             intervals = dlg.get_intervals()
