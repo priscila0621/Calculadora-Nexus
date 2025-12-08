@@ -38,8 +38,10 @@ def son_multiplos(v1, v2):
             continue
 
         if fb == 0:
+            conclusion = "No existe un escalar k común: una componente de v₂ es 0 mientras la correspondiente de v₁ no lo es."
             pasos.append(f"  • Componente {idx}: v₂_{idx} = 0 pero v₁_{idx} = {fmt(fa)} → no existe un mismo k que satisfaga todas las componentes.")
-            return False, None, pasos, ""
+            pasos.append(f"Conclusión: {conclusion}")
+            return False, None, pasos, conclusion
 
         k_local = Fraction(0) if fa == 0 else (fa / fb).limit_denominator()
         pasos.append(f"  • Componente {idx}: {fmt(fa)} = {fmt(k_local)}·{fmt(fb)}")
@@ -49,8 +51,10 @@ def son_multiplos(v1, v2):
             continue
 
         if k_local != ratio:
+            conclusion = "No existe un único k que iguale todas las componentes; por tanto v₁ y v₂ no son múltiplos."
             pasos.append(f"  × El valor de k cambió (antes {fmt(ratio)}, ahora {fmt(k_local)}) → no son múltiplos.")
-            return False, None, pasos, ""
+            pasos.append(f"Conclusión: {conclusion}")
+            return False, None, pasos, conclusion
 
     # Si nunca se fijó ratio (ambos vectores eran 0 en todas las entradas), tomamos k = 0.
     if ratio is None:
@@ -125,6 +129,8 @@ def son_linealmente_independientes(vectores, metodo="gauss"):
             detalle_multiplos = "🧮 Comprobación de múltiplos para {v₁, v₂}:\n" + "\n".join(pasos_mult) + "\n"
         else:
             reglas_aplicadas.append("• Un conjunto de dos vectores {v₁, v₂} es linealmente independiente si y solo si ninguno de los vectores es un múltiplo del otro.")
+            if pasos_mult:
+                detalle_multiplos = "🧮 Comprobación de que no son múltiplos (v₁, v₂):\n" + "\n".join(pasos_mult) + "\n"
 
     if p <= 2 and reglas_aplicadas and not (metodo == "determinante" and p == n):
         resultado += "📘 Reglas aplicadas:\n" + "\n".join(reglas_aplicadas) + "\n\n"
@@ -134,6 +140,8 @@ def son_linealmente_independientes(vectores, metodo="gauss"):
             resultado += "❌ El conjunto es linealmente DEPENDIENTE.\n"
             return False, resultado
         else:
+            if detalle_multiplos:
+                resultado += detalle_multiplos
             resultado += "✅ El conjunto es linealmente INDEPENDIENTE.\n"
             return True, resultado
 
