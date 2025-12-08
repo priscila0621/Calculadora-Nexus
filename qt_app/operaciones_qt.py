@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QTextCursor
 from fractions import Fraction
+from determinante_matriz_app import determinante_con_pasos
 from .theme import bind_font_scale_stylesheet, bind_theme_icon, make_overflow_icon, gear_icon_preferred
 from .settings_qt import open_settings_dialog
 
@@ -878,6 +879,76 @@ class OperacionesMatricesWindow(QMainWindow):
         inv = [row[n:] for row in M]
         return inv
 
+    # ---------- Helpers con pasos detallados ----------
+    def _transpose_with_steps(self, A):
+        m = len(A); n = len(A[0]) if m else 0
+        steps = [f"Dimensiones: {m}x{n}. Se intercambian filas por columnas."]
+        T = [[A[j][i] for j in range(m)] for i in range(n)]
+        for i in range(n):
+            col_vals = [_fmt(A[j][i]) for j in range(m)]
+            row_vals = [_fmt(T[i][k]) for k in range(len(T[i]))]
+            steps.append(f"Fila {i+1} de A^T se forma con columna {i+1} de A: ({', '.join(col_vals)}) -> [{', '.join(row_vals)}]")
+        return T, steps
+
+    def _det_with_steps(self, A):
+        det, steps = determinante_con_pasos(A)
+        return det, [s.replace("—", "-") for s in steps]
+
+    def _inv_with_steps(self, A):
+        n = len(A)
+        if n == 0 or len(A[0]) != n:
+            raise ValueError("La matriz no es cuadrada.")
+        # Matriz aumentada
+        I = [[Fraction(1 if i == j else 0) for j in range(n)] for i in range(n)]
+        M = [A[i][:] + I[i][:] for i in range(n)]
+        steps = ["Construir matriz aumentada [A|I]:"]
+        steps.extend(self._format_aug_lines(M, n))
+
+        for col in range(n):
+            # buscar pivote
+            pivot = None
+            for r in range(col, n):
+                if M[r][col] != 0:
+                    pivot = r; break
+            if pivot is None:
+                raise ValueError("La matriz no es invertible.")
+            if pivot != col:
+                M[col], M[pivot] = M[pivot], M[col]
+                steps.append(f"Intercambiar R{col+1} con R{pivot+1} (pivote a la posicion {col+1}).")
+                steps.extend(self._format_aug_lines(M, n))
+            piv = M[col][col]
+            if piv == 0:
+                raise ValueError("La matriz no es invertible.")
+            if piv != 1:
+                M[col] = [x / piv for x in M[col]]
+                steps.append(f"Normalizar R{col+1} dividiendo por {_fmt(piv)} para hacer pivote = 1.")
+                steps.extend(self._format_aug_lines(M, n))
+            for r in range(n):
+                if r == col:
+                    continue
+                factor = M[r][col]
+                if factor == 0:
+                    continue
+                M[r] = [M[r][c] - factor * M[col][c] for c in range(2*n)]
+                steps.append(f"R{r+1} = R{r+1} - ({_fmt(factor)})·R{col+1} para anular columna {col+1}.")
+                steps.extend(self._format_aug_lines(M, n))
+        inv = [row[n:] for row in M]
+        steps.append("Resultado: [I|A^{-1}] obtenido. Extraemos la parte derecha.")
+        steps.extend(self._format_aug_lines(M, n))
+        return inv, steps
+
+    def _format_aug_lines(self, M, n):
+        lines = []
+        if not M:
+            return lines
+        left_cols = n
+        maxw = max(len(_fmt(v)) for row in M for v in row)
+        for row in M:
+            left = " ".join(_fmt(v).rjust(maxw) for v in row[:left_cols])
+            right = " ".join(_fmt(v).rjust(maxw) for v in row[left_cols:])
+            lines.append(f"  {left} | {right}")
+        return lines
+
     def _eval_with_log(self, node, log):
         kind = node[0]
         if kind == "scalar":
@@ -967,16 +1038,13 @@ class OperacionesMatricesWindow(QMainWindow):
             val, val_label = self._eval_with_log(node[1], log)
             if val["type"] == "matrix":
                 A = val["value"]
-                m = len(A); n = len(A[0]) if m else 0
-                T = [[A[j][i] for j in range(m)] for i in range(n)]
-                log.append(f"Transpuesta de {val_label} ({m}x{n}):")
-                for i in range(n):
-                    fila = [f"{_fmt(A[j][i])}" for j in range(m)]
-                    log.append(f"  fila {i+1}: " + ", ".join(fila))
+                T, pasos = self._transpose_with_steps(A)
+                log.append(f"Operacion: Transpuesta de {val_label}")
+                log.extend([f"  {p}" for p in pasos])
                 return {"type": "matrix", "value": T}, f"({val_label})^T"
             if val["type"] == "vector":
                 v = val["value"]
-                log.append(f"Transpuesta de vector {val_label}: igual (vector columna)")
+                log.append(f"Operacion: Transpuesta de vector {val_label} (se mantiene como columna)")
                 return {"type": "vector", "value": v}, f"({val_label})^T"
             raise ValueError("Solo se puede transponer matrices o vectores.")
         if kind == "^{-1}":
@@ -984,18 +1052,18 @@ class OperacionesMatricesWindow(QMainWindow):
             if val["type"] != "matrix":
                 raise ValueError("Solo se puede invertir matrices.")
             A = val["value"]
-            log.append(f"Inversa de {val_label}:")
-            inv = self._mat_inv(A)
-            log.append(f"  Matriz inversa calculada por Gauss-Jordan.")
+            inv, pasos = self._inv_with_steps(A)
+            log.append(f"Operacion: Inversa de {val_label} usando Gauss-Jordan")
+            log.extend([f"  {p}" for p in pasos])
             return {"type": "matrix", "value": inv}, f"({val_label})^{{-1}}"
         if kind == "det":
             val, val_label = self._eval_with_log(node[1], log)
             if val["type"] != "matrix":
                 raise ValueError("Solo se puede calcular el determinante de matrices.")
             A = val["value"]
-            log.append(f"Determinante de {val_label}:")
-            det = self._mat_det(A)
-            log.append(f"  Valor calculado: {_fmt(det)}")
+            det, pasos = self._det_with_steps(A)
+            log.append(f"Operacion: Determinante de {val_label}")
+            log.extend([f"  {p}" for p in pasos])
             return {"type": "scalar", "value": det}, f"det({val_label})"
         raise ValueError("Nodo invalido.")
 
@@ -1061,7 +1129,7 @@ class OperacionesMatricesWindow(QMainWindow):
 
     def _rule_from_ast(self, ast):
         if ast[0] != "op":
-            return "Expresion simple (sin operadores)."
+            return "Operacion directa (un solo termino)."
         op = ast[1]
         tL = self._node_type(ast[2])
         tR = self._node_type(ast[3])
@@ -1153,6 +1221,7 @@ class OperacionesMatricesWindow(QMainWindow):
 
             # Procedimiento: usar pasos generados por _eval_with_log
             proc = []
+            proc.append(f"Operacion: {expr}")
             proc.append('Valores guardados:')
             proc.extend(saved_lines if saved_lines else ['(No hay objetos guardados)'])
             proc.append('')
@@ -1164,12 +1233,14 @@ class OperacionesMatricesWindow(QMainWindow):
             proc.append('')
             proc.append('Procedimiento paso a paso:')
             if pasos:
-                for idx, line in enumerate(pasos, 1):
-                    proc.append(f"{idx}. {line}")
+                for line in pasos:
+                    proc.append(line)
             else:
-                proc.append('Sin operaciones registradas.')
+                proc.append('Pasos no disponibles para esta expresion.')
 
             html = []
+            html.append(f"<b>Operacion</b>")
+            html.append(self._pre(expr))
             html.append('<b>Valores guardados</b>')
             if saved_lines:
                 html.append(self._pre('\n'.join(saved_lines)))
@@ -1180,7 +1251,7 @@ class OperacionesMatricesWindow(QMainWindow):
             html.append('<b>Regla aplicada</b>')
             html.append(self._pre(rule))
             html.append('<b>Procedimiento paso a paso</b>')
-            html.append(self._pre('\n'.join([f"{i+1}. {l}" for i,l in enumerate(pasos)]) if pasos else 'Sin operaciones registradas.'))
+            html.append(self._pre('\n'.join(pasos) if pasos else 'Pasos no disponibles para esta expresion.'))
             html.append('<b>Resultado final</b>')
             html.append(self._pre(self._format_value(res)))
             self.result_box.setHtml("\n".join(html))
