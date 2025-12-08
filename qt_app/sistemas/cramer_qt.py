@@ -303,6 +303,7 @@ class CramerWindow(QMainWindow):
         self.det_label.setText("det(A) = —")
         self.vars_box.clear()
         self.btn_resolver.setEnabled(False)
+        self._resize_results_area()
 
     def _rebuild_grid(self, filas: int, columnas: int):
         old = [[e.text() for e in row] for row in self._entries] if self._entries else []
@@ -851,4 +852,21 @@ class CramerWindow(QMainWindow):
             detalles_text.append("\n")
 
         self.detalles_text.setPlainText("\n".join(detalles_text))
+        self._resize_results_area()
+
+    def _resize_results_area(self):
+        """Ajusta la altura del panel de resultados para evitar espacios vacíos."""
+        try:
+            fm_var = self.vars_box.fontMetrics()
+            lines = self.vars_box.toPlainText().splitlines() or [""]
+            content_h = fm_var.lineSpacing() * max(1, len(lines)) + 12
+            content_h = max(content_h, 60)
+            self.vars_box.setMinimumHeight(content_h)
+            self.vars_box.setMaximumHeight(content_h + 40)
+
+            det_h = self.det_label.sizeHint().height()
+            total_h = det_h + content_h + 24
+            self.result_highlight.setMinimumHeight(total_h)
+        except Exception:
+            pass
 
