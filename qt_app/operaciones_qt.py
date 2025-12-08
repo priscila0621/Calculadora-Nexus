@@ -690,23 +690,30 @@ class OperacionesMatricesWindow(QMainWindow):
             ch = expr[i]
             if ch in "+-*()":
                 tokens.append(ch); i += 1; continue
+            if ch == '^':
+                # Soporta ^T y ^{-1}
+                if expr[i:i+2] == '^T':
+                    tokens.append('^T'); i += 2; continue
+                if expr[i:i+5] == '^{-1}':
+                    tokens.append('^{-1}'); i += 5; continue
+                raise ValueError(f"Operador desconocido: {expr[i:i+5]}")
+            if expr[i:i+4] == 'det(':  # det(A)
+                tokens.append('det'); i += 3; continue
             if ch.isdigit():
                 j = i
                 while j < len(expr) and (expr[j].isdigit() or expr[j] == "/"):
                     j += 1
                 tokens.append(expr[i:j]); i = j; continue
             if ch.isalpha():
-                # Nombres de un caracter (A, B, u, v, c...). Evita tokens largos como "Ac".
                 tokens.append(ch); i += 1; continue
             raise ValueError(f"Caracter invalido: {ch}")
         out = []
         def is_value(t):
-            return t not in {"+", "-", "*", "(", ")"}
+            return t not in {'+', '-', '*', '(', ')', '^T', '^{-1}', 'det'}
         for idx, tok in enumerate(tokens):
             out.append(tok)
             if idx + 1 < len(tokens):
                 a, b = tok, tokens[idx + 1]
-                # Insertar multiplicacion implicita en casos como "cA", "A(u+v)", ")(" o ")A"
                 if (is_value(a) or a == ")") and (is_value(b) or b == "("):
                     out.append("*")
         return out
@@ -754,7 +761,21 @@ class OperacionesMatricesWindow(QMainWindow):
             if self._peek() != ")":
                 raise ValueError("Falta cerrar parentesis")
             self._eat(")")
+            # Soporta operadores postfijos ^T y ^{-1}
+            if self._peek() in ["^T", "^{-1}"]:
+                op = self._eat()
+                return (op, node)
             return node
+        if tok == "det":
+            self._eat("det")
+            if self._peek() != "(":
+                raise ValueError("Se esperaba '('")
+            self._eat("(")
+            node = self._parse_expr()
+            if self._peek() != ")":
+                raise ValueError("Falta cerrar parentesis en det")
+            self._eat(")")
+            return ("det", node)
         if tok is None:
             raise ValueError("Expresion incompleta")
         self._eat()
@@ -763,7 +784,12 @@ class OperacionesMatricesWindow(QMainWindow):
         if tok.isalpha():
             if tok not in self.objects:
                 raise ValueError(f"Objeto '{tok}' no definido.")
-            return ("id", tok)
+            # Soporta operadores postfijos ^T y ^{-1}
+            node = ("id", tok)
+            if self._peek() in ["^T", "^{-1}"]:
+                op = self._eat()
+                return (op, node)
+            return node
         raise ValueError(f"Token inesperado: {tok}")
 
     # ---------------- Evaluacion ----------------
@@ -782,7 +808,75 @@ class OperacionesMatricesWindow(QMainWindow):
                 return self._sub(a, b)
             if op == "*":
                 return self._mul(a, b)
+        if kind == "^T":
+            val = self._eval(node[1])
+            if val["type"] == "matrix":
+                A = val["value"]
+                m = len(A); n = len(A[0]) if m else 0
+                T = [[A[j][i] for j in range(m)] for i in range(n)]
+                return {"type": "matrix", "value": T}
+            if val["type"] == "vector":
+                v = val["value"]
+                return {"type": "vector", "value": v}  # Vector columna, transpuesta es igual
+            raise ValueError("Solo se puede transponer matrices o vectores.")
+        if kind == "^{-1}":
+            val = self._eval(node[1])
+            if val["type"] != "matrix":
+                raise ValueError("Solo se puede invertir matrices.")
+            A = val["value"]
+            return {"type": "matrix", "value": self._mat_inv(A)}
+        if kind == "det":
+            val = self._eval(node[1])
+            if val["type"] != "matrix":
+                raise ValueError("Solo se puede calcular el determinante de matrices.")
+            A = val["value"]
+            return {"type": "scalar", "value": self._mat_det(A)}
         raise ValueError("Nodo invalido.")
+    def _mat_det(self, A):
+        # Determinante por recursión (Laplace)
+        m = len(A)
+        n = len(A[0]) if m else 0
+        if m != n:
+            raise ValueError("La matriz no es cuadrada.")
+        if m == 1:
+            return A[0][0]
+        if m == 2:
+            return A[0][0]*A[1][1] - A[0][1]*A[1][0]
+        det = Fraction(0)
+        for j in range(n):
+            minor = [[A[i][k] for k in range(n) if k != j] for i in range(1, m)]
+            det += ((-1)**j) * A[0][j] * self._mat_det(minor)
+        return det
+
+    def _mat_inv(self, A):
+        # Inversa por Gauss-Jordan
+        m = len(A)
+        n = len(A[0]) if m else 0
+        if m != n:
+            raise ValueError("La matriz no es cuadrada.")
+        # Construir matriz aumentada [A | I]
+        M = [[A[i][j] for j in range(n)] + [Fraction(int(i==j)) for j in range(n)] for i in range(n)]
+        # Gauss-Jordan
+        for i in range(n):
+            # Buscar pivote
+            if M[i][i] == 0:
+                for k in range(i+1, n):
+                    if M[k][i] != 0:
+                        M[i], M[k] = M[k], M[i]
+                        break
+                else:
+                    raise ValueError("La matriz no es invertible.")
+            piv = M[i][i]
+            for j in range(2*n):
+                M[i][j] /= piv
+            for k in range(n):
+                if k != i:
+                    fac = M[k][i]
+                    for j in range(2*n):
+                        M[k][j] -= fac * M[i][j]
+        # Extraer inversa
+        inv = [row[n:] for row in M]
+        return inv
 
     def _eval_with_log(self, node, log):
         kind = node[0]
@@ -869,6 +963,40 @@ class OperacionesMatricesWindow(QMainWindow):
                     for i, val in enumerate(res['value']):
                         log.append(f"  v[{i+1}]: {_fmt(a['value'][i])} * {_fmt(b['value'])} = {_fmt(val)}")
                 return res, f"{a_label}*{b_label}"
+        if kind == "^T":
+            val, val_label = self._eval_with_log(node[1], log)
+            if val["type"] == "matrix":
+                A = val["value"]
+                m = len(A); n = len(A[0]) if m else 0
+                T = [[A[j][i] for j in range(m)] for i in range(n)]
+                log.append(f"Transpuesta de {val_label} ({m}x{n}):")
+                for i in range(n):
+                    fila = [f"{_fmt(A[j][i])}" for j in range(m)]
+                    log.append(f"  fila {i+1}: " + ", ".join(fila))
+                return {"type": "matrix", "value": T}, f"({val_label})^T"
+            if val["type"] == "vector":
+                v = val["value"]
+                log.append(f"Transpuesta de vector {val_label}: igual (vector columna)")
+                return {"type": "vector", "value": v}, f"({val_label})^T"
+            raise ValueError("Solo se puede transponer matrices o vectores.")
+        if kind == "^{-1}":
+            val, val_label = self._eval_with_log(node[1], log)
+            if val["type"] != "matrix":
+                raise ValueError("Solo se puede invertir matrices.")
+            A = val["value"]
+            log.append(f"Inversa de {val_label}:")
+            inv = self._mat_inv(A)
+            log.append(f"  Matriz inversa calculada por Gauss-Jordan.")
+            return {"type": "matrix", "value": inv}, f"({val_label})^{{-1}}"
+        if kind == "det":
+            val, val_label = self._eval_with_log(node[1], log)
+            if val["type"] != "matrix":
+                raise ValueError("Solo se puede calcular el determinante de matrices.")
+            A = val["value"]
+            log.append(f"Determinante de {val_label}:")
+            det = self._mat_det(A)
+            log.append(f"  Valor calculado: {_fmt(det)}")
+            return {"type": "scalar", "value": det}, f"det({val_label})"
         raise ValueError("Nodo invalido.")
 
     def _describe_obj(self, obj):
