@@ -175,8 +175,12 @@ class OperacionesMatricesWindow(QMainWindow):
         form = QHBoxLayout(); form.setSpacing(8)
         self.vec_name = QLineEdit("u"); self.vec_name.setFixedWidth(60)
         self.vec_dim = QLineEdit("2"); self.vec_dim.setFixedWidth(60); self.vec_dim.setAlignment(Qt.AlignCenter)
+        self.vec_orientation = QComboBox(); self.vec_orientation.setFixedWidth(150)
+        self.vec_orientation.addItem("Columna (n x 1)", userData="col")
+        self.vec_orientation.addItem("Fila (1 x n)", userData="row")
         form.addWidget(QLabel("Nombre:")); form.addWidget(self.vec_name)
         form.addWidget(QLabel("Dimension:")); form.addWidget(self.vec_dim)
+        form.addWidget(QLabel("Orientacion:")); form.addWidget(self.vec_orientation)
         btn_grid = QPushButton("Crear tablero"); btn_grid.clicked.connect(self._crear_tablero_vector)
         form.addWidget(btn_grid)
         lay.addLayout(form)
@@ -379,8 +383,9 @@ class OperacionesMatricesWindow(QMainWindow):
         except Exception as exc:
             QMessageBox.warning(self, "Aviso", f"Error en datos del vector: {exc}")
             return
+        orientation = self.vec_orientation.currentData() or "col"
         final_name = self._unique_name(nombre)
-        self.objects[final_name] = {"type": "vector", "value": vec}
+        self.objects[final_name] = {"type": "vector", "value": vec, "orientation": orientation}
         self._refresh_objects_view()
 
     def _guardar_escalar(self):
@@ -410,7 +415,9 @@ class OperacionesMatricesWindow(QMainWindow):
             if obj["type"] == "scalar":
                 label = f"{k}: escalar = {_fmt(obj['value'])}"
             elif obj["type"] == "vector":
-                label = f"{k}: vector dim {len(obj['value'])} -> [{', '.join(_fmt(x) for x in obj['value'])}]"
+                orient = obj.get("orientation", "col")
+                orient_label = "columna" if orient == "col" else "fila"
+                label = f"{k}: vector {orient_label} dim {len(obj['value'])} -> [{', '.join(_fmt(x) for x in obj['value'])}]"
             else:
                 m = len(obj["value"]); n = len(obj["value"][0]) if m else 0
                 label = f"{k}: matriz {m}x{n}"
@@ -531,7 +538,7 @@ class OperacionesMatricesWindow(QMainWindow):
         if dlg.exec() != QDialog.Accepted:
             return
         try:
-            new_obj = self._parse_edit_content(tip, editor.toPlainText())
+            new_obj = self._parse_edit_content(tip, editor.toPlainText(), obj=obj)
             self.objects[name] = new_obj
             self._refresh_objects_view()
         except Exception as exc:
@@ -554,14 +561,15 @@ class OperacionesMatricesWindow(QMainWindow):
             return "\n".join(" ".join(_fmt(x) for x in row) for row in obj["value"])
         return ""
 
-    def _parse_edit_content(self, tip: str, text: str):
+    def _parse_edit_content(self, tip: str, text: str, obj=None):
         text = (text or "").strip()
         if tip == "scalar":
             return {"type": "scalar", "value": _parse_fraction(text or "0")}
         lines = [ln.strip() for ln in text.splitlines() if ln.strip() != ""]
         if tip == "vector":
             vals = [_parse_fraction(x) for x in lines] if lines else [Fraction(0)]
-            return {"type": "vector", "value": vals}
+            orient = (obj or {}).get("orientation", "col")
+            return {"type": "vector", "value": vals, "orientation": orient}
         # matrix
         rows = []
         for ln in lines:
@@ -648,9 +656,12 @@ class OperacionesMatricesWindow(QMainWindow):
         if ta == "scalar":
             return {"type": "scalar", "value": a["value"] + b["value"]}
         if ta == "vector":
+            oa = a.get("orientation", "col"); ob = b.get("orientation", "col")
+            if oa != ob:
+                raise ValueError("Solo se pueden sumar vectores con la misma orientacion (fila o columna).")
             if len(a["value"]) != len(b["value"]):
                 raise ValueError("Los vectores deben tener la misma dimension.")
-            return {"type": "vector", "value": [a["value"][i] + b["value"][i] for i in range(len(a['value']))]}
+            return {"type": "vector", "value": [a["value"][i] + b["value"][i] for i in range(len(a['value']))], "orientation": oa}
         ma = len(a["value"]); na = len(a["value"][0]) if ma else 0
         mb = len(b["value"]); nb = len(b["value"][0]) if mb else 0
         if ma != mb or na != nb:
@@ -676,13 +687,22 @@ class OperacionesMatricesWindow(QMainWindow):
                 return {"type": "matrix", "value": [[val * x for x in row] for row in b["value"]]}
         if tb == "scalar":
             return self._mul(b, a)
-        # Producto vector (columna) * vector (fila) -> matriz (outer product)
+        # Producto entre vectores (considerando orientación)
         if ta == "vector" and tb == "vector":
             va = a["value"]; vb = b["value"]
-            if len(va) != len(vb):
-                raise ValueError("Dimensiones incompatibles para vector * vector (outer product).")
-            res = [[va[i] * vb[j] for j in range(len(vb))] for i in range(len(va))]
-            return {"type": "matrix", "value": res}
+            oa = a.get("orientation", "col"); ob = b.get("orientation", "col")
+            if oa == "col" and ob == "row":
+                res = [[va[i] * vb[j] for j in range(len(vb))] for i in range(len(va))]
+                return {"type": "matrix", "value": res}
+            if oa == "row" and ob == "col":
+                if len(va) != len(vb):
+                    raise ValueError(f"Multiplicacion no definida: vector fila 1x{len(va)} por vector columna {len(vb)}x1 (se requiere longitudes iguales).")
+                return {"type": "scalar", "value": sum(va[i] * vb[i] for i in range(len(va)))}
+            if oa == "row" and ob == "row":
+                raise ValueError(f"Multiplicacion no definida: vector fila 1x{len(va)} por vector fila 1x{len(vb)}.")
+            if oa == "col" and ob == "col":
+                raise ValueError(f"Multiplicacion no definida: vector columna {len(va)}x1 por vector columna {len(vb)}x1.")
+            raise ValueError("Multiplicacion de vectores no definida para esta orientacion.")
         # Permitir vector fila * matriz (producto de (x^T)*(A^T))
         if ta == "vector" and tb == "matrix":
             v = a["value"]
@@ -690,28 +710,45 @@ class OperacionesMatricesWindow(QMainWindow):
             n = len(v)
             m = len(B)
             p = len(B[0]) if m else 0
-            if m == n:
-                # Producto vector fila (1xn) por matriz (nxp) = vector fila (1xp)
+            oa = a.get("orientation", "col")
+            if oa == "row":
+                if m != n:
+                    raise ValueError(f"Multiplicacion no definida: vector fila 1x{n} con matriz {m}x{p} (se requiere 1x{n} * {n}x{p}).")
                 res = []
                 for j in range(p):
                     res.append(sum(v[i] * B[i][j] for i in range(n)))
-                return {"type": "vector", "value": res}
-            else:
-                raise ValueError("Dimensiones incompatibles para vector * matriz (vector fila por matriz).")
+                return {"type": "vector", "value": res, "orientation": "row"}
+            else:  # col * matrix
+                if m != 1:
+                    raise ValueError(f"Multiplicacion no definida: vector columna {n}x1 con matriz {m}x{p} (se requiere {n}x1 * 1x{p}).")
+                res = []
+                for j in range(p):
+                    res.append(sum(v[i] * B[0][j] for i in range(n)))
+                return {"type": "vector", "value": res, "orientation": "row"}
         if ta == "vector":
-            raise ValueError("Solo se permite matriz * vector, no vector * matriz. Si necesitas (x^T)*(A^T), verifica que las dimensiones sean compatibles.")
+            raise ValueError("Solo se permite matriz * vector, no vector * matriz.")
         if ta == "matrix" and tb == "vector":
             A = a["value"]; v = b["value"]
             m = len(A); n = len(A[0]) if m else 0
-            if len(v) != n:
-                raise ValueError("Dimensiones incompatibles para A * v.")
-            return {"type": "vector", "value": [sum(A[i][j] * v[j] for j in range(n)) for i in range(m)]}
+            ob = b.get("orientation", "col")
+            if ob == "col":
+                if len(v) != n:
+                    raise ValueError(f"Multiplicacion no definida: matriz {m}x{n} con vector {len(v)}x1 (se requiere {m}x{n} * {n}x1).")
+                return {"type": "vector", "value": [sum(A[i][j] * v[j] for j in range(n)) for i in range(m)], "orientation": "col"}
+            else:  # row vector
+                if n != 1:
+                    raise ValueError(f"Multiplicacion no definida: matriz {m}x{n} con vector fila 1x{len(v)} (se requiere {m}x1 * 1x{len(v)} si se quiere permitir).")
+                res = []
+                for i in range(m):
+                    fila = [A[i][0] * v[j] for j in range(len(v))]
+                    res.append(fila)
+                return {"type": "matrix", "value": res}
         if ta == "matrix" and tb == "matrix":
             A, B = a["value"], b["value"]
             m = len(A); n = len(A[0]) if m else 0
             n2 = len(B); p = len(B[0]) if n2 else 0
             if n != n2:
-                raise ValueError("Dimensiones incompatibles para A * B.")
+                raise ValueError(f"Multiplicacion no definida: {m}x{n} por {n2}x{p} (se requiere {m}x{n} * {n}x{p}).")
             res = []
             for i in range(m):
                 fila = []
@@ -862,7 +899,9 @@ class OperacionesMatricesWindow(QMainWindow):
                 return {"type": "matrix", "value": T}
             if val["type"] == "vector":
                 v = val["value"]
-                return {"type": "vector", "value": v}  # Vector columna, transpuesta es igual
+                orient = val.get("orientation", "col")
+                new_orient = "row" if orient == "col" else "col"
+                return {"type": "vector", "value": v, "orientation": new_orient}
             raise ValueError("Solo se puede transponer matrices o vectores.")
         if kind == "^{-1}":
             val = self._eval(node[1])
@@ -1128,12 +1167,15 @@ class OperacionesMatricesWindow(QMainWindow):
                     for i, val in enumerate(res['value']):
                         log.append(f"  v[{i+1}]: {_fmt(a['value'][i])} * {_fmt(b['value'])} = {_fmt(val)}")
                 elif a['type'] == 'vector' and b['type'] == 'vector':
-                    m = len(res['value']); n = len(res['value'][0]) if m else 0
-                    for i in range(m):
-                        parts = []
-                        for j in range(n):
-                            parts.append(f"{_fmt(a['value'][i])}*{_fmt(b['value'][j])}={_fmt(res['value'][i][j])}")
-                        log.append(f"  fila {i+1}: " + ", ".join(parts))
+                    if res['type'] == 'scalar':
+                        log.append(f"  dot: sum(a_i*b_i) = {_fmt(res['value'])}")
+                    elif res['type'] == 'matrix':
+                        m = len(res['value']); n = len(res['value'][0]) if m else 0
+                        for i in range(m):
+                            parts = []
+                            for j in range(n):
+                                parts.append(f"{_fmt(a['value'][i])}*{_fmt(b['value'][j])}={_fmt(res['value'][i][j])}")
+                            log.append(f"  fila {i+1}: " + ", ".join(parts))
                 return res, f"{a_label}*{b_label}"
         if kind == "^T":
             val, val_label = self._eval_with_log(node[1], log)
@@ -1145,8 +1187,10 @@ class OperacionesMatricesWindow(QMainWindow):
                 return {"type": "matrix", "value": T}, f"({val_label})^T"
             if val["type"] == "vector":
                 v = val["value"]
-                log.append(f"Operacion: Transpuesta de vector {val_label} (se mantiene como columna)")
-                return {"type": "vector", "value": v}, f"({val_label})^T"
+                orient = val.get("orientation", "col")
+                new_orient = "row" if orient == "col" else "col"
+                log.append(f"Operacion: Transpuesta de vector {val_label} (pasa de {orient} a {new_orient})")
+                return {"type": "vector", "value": v, "orientation": new_orient}, f"({val_label})^T"
             raise ValueError("Solo se puede transponer matrices o vectores.")
         if kind == "^{-1}":
             val, val_label = self._eval_with_log(node[1], log)
@@ -1198,6 +1242,9 @@ class OperacionesMatricesWindow(QMainWindow):
             return _fmt(obj["value"])
         if obj["type"] == "vector":
             vals = [_fmt(x) for x in obj["value"]]
+            orient = obj.get("orientation", "col")
+            if orient == "row":
+                return "[ " + " ".join(vals) + " ]"
             w = max((len(s) for s in vals), default=1)
             return "\n".join("[ " + s.rjust(w) + " ]" for s in vals)
         if obj["type"] == "matrix":
