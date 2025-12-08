@@ -131,6 +131,8 @@ class IndependenciaWindow(QMainWindow):
             metodo = self.metodo_combo.currentData() or "gauss"
             ok, texto = son_linealmente_independientes(vectores, metodo=metodo)
 
+            # Asegura que el bocado de estado siempre se muestre tras verificar
+            self.status_label.setVisible(True)
             if ok:
                 self.status_label.setText("Linealmente INDEPENDIENTE")
                 self.status_label.setStyleSheet(
@@ -159,7 +161,6 @@ class IndependenciaWindow(QMainWindow):
                     }
                     """
                 )
-                self.status_label.setVisible(True)
 
             header_lines = []
             if orientacion == "fila":
