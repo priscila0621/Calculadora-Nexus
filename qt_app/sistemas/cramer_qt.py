@@ -821,11 +821,13 @@ class CramerWindow(QMainWindow):
                 frac = f"|A{i+1}| / |A| = {_fmt_fraction(detk)} / {_fmt_fraction(detA)} = {_fmt_fraction(val)}"
                 sol_html_lines.append(left + frac)
         # usar <pre> para mantener alineación y un recuadro un poco más grande
+        html_parts.append("<div style='display:flex; justify-content:center; margin-top:8px;'>")
         html_parts.append(
-            f"<pre style='font-family:Consolas,monospace; font-size:{mono_large}px; text-align:left; display:inline-block; padding:12px; margin-top:8px; border:1px solid #ddd; border-radius:6px; background:#fff;'>"
+            f"<pre style='font-family:Consolas,monospace; font-size:{mono_large}px; text-align:center; padding:12px; margin:0; border:1px solid #ddd; border-radius:6px; background:#fff;'>"
         )
         html_parts.append("\n".join(sol_html_lines))
         html_parts.append("</pre>")
+        html_parts.append("</div>")
 
         html_parts.append("</div>")
         proc_html = "\n".join(html_parts)
