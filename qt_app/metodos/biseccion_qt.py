@@ -1443,7 +1443,7 @@ class MetodoBiseccionWindow(QMainWindow):
                 QMessageBox.warning(self, "Aviso", f"No se pudo calcular la raíz (intervalo [{a1}, {b1}]): {exc}")
         else:
             # Detección automática para la primera raíz si no hay intervalo
-            dlg = IntervalsDialog(self, func, start=-10.0, end=10.0, step=0.25)
+            dlg = IntervalsDialog(self, func, start=-10.0, end=10.0, step=0.5)
             if dlg.exec() != QDialog.Accepted:
                 return
             intervals = dlg.get_intervals()
