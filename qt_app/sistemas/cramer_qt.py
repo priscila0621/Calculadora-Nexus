@@ -829,8 +829,11 @@ class CramerWindow(QMainWindow):
         html_parts.append("</div>")
         proc_html = "\n".join(html_parts)
         try:
-            # aumentar ligeramente el tamaño visible del QTextEdit para el procedimiento
-            self.procedimiento.setMinimumHeight(340)
+            # hacer que el área de procedimiento muestre al menos 4 filas de la matriz sin recortar
+            row_height = self.procedimiento.fontMetrics().lineSpacing() or 18
+            visible_rows = max(4, n + 1)  # n filas de la matriz + encabezados; mínimo 4
+            min_height = int(visible_rows * row_height + 120)  # padding extra para títulos y márgenes
+            self.procedimiento.setMinimumHeight(min_height)
             self.procedimiento.setHtml(proc_html)
         except Exception:
             # fallback a texto simple
