@@ -629,6 +629,9 @@ class OperacionesMatricesWindow(QMainWindow):
     # ---------------- Algebra ----------------
     def _add(self, a, b):
         ta, tb = a["type"], b["type"]
+        if ta == 'identity_pending' or tb == 'identity_pending':
+            a, b = self._coerce_identity_for_sum(a, b)
+            ta, tb = a["type"], b["type"]
         if ta != tb:
             raise ValueError("Solo se pueden sumar objetos del mismo tipo.")
         if ta == "scalar":
@@ -649,6 +652,9 @@ class OperacionesMatricesWindow(QMainWindow):
 
     def _mul(self, a, b):
         ta, tb = a["type"], b["type"]
+        if ta == 'identity_pending' or tb == 'identity_pending':
+            a, b = self._coerce_identity_for_mul(a, b)
+            ta, tb = a["type"], b["type"]
         if ta == "scalar":
             val = a["value"]
             if tb == "scalar":
@@ -692,10 +698,12 @@ class OperacionesMatricesWindow(QMainWindow):
             if ch in "+-*()":
                 tokens.append(ch); i += 1; continue
             if ch == '^':
-                # Soporta ^T y ^{-1}
+                # Soporta ^T, ^{-1} y ^(-1)
                 if expr[i:i+2] == '^T':
                     tokens.append('^T'); i += 2; continue
                 if expr[i:i+5] == '^{-1}':
+                    tokens.append('^{-1}'); i += 5; continue
+                if expr[i:i+5] == '^(-1)':
                     tokens.append('^{-1}'); i += 5; continue
                 raise ValueError(f"Operador desconocido: {expr[i:i+5]}")
             if expr[i:i+4] == 'det(':  # det(A)
@@ -784,7 +792,10 @@ class OperacionesMatricesWindow(QMainWindow):
             return ("scalar", _parse_fraction(tok))
         if tok.isalpha():
             if tok not in self.objects:
-                raise ValueError(f"Objeto '{tok}' no definido.")
+                if tok == "I":
+                    self.objects['I'] = {'type': 'identity_pending'}
+                else:
+                    raise ValueError(f"Objeto '{tok}' no definido.")
             # Soporta operadores postfijos ^T y ^{-1}
             node = ("id", tok)
             if self._peek() in ["^T", "^{-1}"]:
@@ -880,6 +891,26 @@ class OperacionesMatricesWindow(QMainWindow):
         return inv
 
     # ---------- Helpers con pasos detallados ----------
+    def _ensure_identity(self, n=None):
+        if n is not None:
+            if n <= 0:
+                raise ValueError("Dimension de identidad invalida.")
+            I = [[Fraction(1 if i == j else 0) for j in range(n)] for i in range(n)]
+            self.objects['I'] = {'type': 'matrix', 'value': I}
+            return self.objects['I']
+        if 'I' in self.objects and self.objects['I'].get('type') == 'matrix':
+            return self.objects['I']
+        # Busca la primera matriz cuadrada guardada para inferir dimension
+        for name in sorted(self.objects.keys()):
+            obj = self.objects[name]
+            if obj.get('type') == 'matrix':
+                m = len(obj['value']); p = len(obj['value'][0]) if m else 0
+                if m == p and m > 0:
+                    I = [[Fraction(1 if i == j else 0) for j in range(m)] for i in range(m)]
+                    self.objects['I'] = {'type': 'matrix', 'value': I}
+                    return self.objects['I']
+        raise ValueError("No se puede inferir la matriz identidad: guarda antes una matriz cuadrada.")
+
     def _transpose_with_steps(self, A):
         m = len(A); n = len(A[0]) if m else 0
         steps = [f"Dimensiones: {m}x{n}. Se intercambian filas por columnas."]
@@ -948,6 +979,36 @@ class OperacionesMatricesWindow(QMainWindow):
             right = " ".join(_fmt(v).rjust(maxw) for v in row[left_cols:])
             lines.append(f"  {left} | {right}")
         return lines
+
+    # ---------- Identidad dinámica ----------
+    def _coerce_identity_for_sum(self, a, b):
+        # Para suma/resta: ambos deben ser matrices mismas dimensiones
+        if a['type'] == 'identity_pending' and b['type'] == 'matrix':
+            m = len(b['value']); n = len(b['value'][0]) if m else 0
+            if m != n:
+                raise ValueError("La identidad debe ser cuadrada y del mismo tamaño que la otra matriz.")
+            a = self._ensure_identity(m)
+        if b['type'] == 'identity_pending' and a['type'] == 'matrix':
+            m = len(a['value']); n = len(a['value'][0]) if m else 0
+            if m != n:
+                raise ValueError("La identidad debe ser cuadrada y del mismo tamaño que la otra matriz.")
+            b = self._ensure_identity(m)
+        return a, b
+
+    def _coerce_identity_for_mul(self, a, b):
+        # I * A  -> n = filas de A
+        # A * I  -> n = columnas de A
+        if a['type'] == 'identity_pending':
+            if b['type'] != 'matrix':
+                raise ValueError("La identidad solo puede multiplicarse con matrices.")
+            n = len(b['value'])
+            a = self._ensure_identity(n)
+        if b['type'] == 'identity_pending':
+            if a['type'] != 'matrix':
+                raise ValueError("La identidad solo puede multiplicarse con matrices.")
+            n = len(a['value'][0]) if len(a['value']) else 0
+            b = self._ensure_identity(n)
+        return a, b
 
     def _eval_with_log(self, node, log):
         kind = node[0]
