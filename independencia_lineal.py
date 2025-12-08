@@ -18,19 +18,53 @@ def es_vector_cero(v):
 
 
 def son_multiplos(v1, v2):
+    """Devuelve (es_multiplo, k, pasos, conclusion)."""
+
+    def toF(x):
+        return Fraction(x).limit_denominator()
+
+    def fmt(q: Fraction):
+        q = toF(q)
+        return f"{q.numerator}" if q.denominator == 1 else f"{q.numerator}/{q.denominator}"
+
     ratio = None
-    for a, b in zip(v1, v2):
-        if b == 0 and a == 0:
+    pasos = ["Buscamos un escalar k tal que v₁ = k·v₂ (comparamos componente a componente):"]
+
+    for idx, (a, b) in enumerate(zip(v1, v2), start=1):
+        fa, fb = toF(a), toF(b)
+
+        if fb == 0 and fa == 0:
+            pasos.append(f"  • Componente {idx}: 0 = k·0 → no fija k (cualquier k funciona en esta componente).")
             continue
-        elif b == 0 or a == 0:
-            return False
-        else:
-            r = a / b
-            if ratio is None:
-                ratio = r
-            elif abs(r - ratio) > 1e-10:
-                return False
-    return ratio is not None
+
+        if fb == 0:
+            pasos.append(f"  • Componente {idx}: v₂_{idx} = 0 pero v₁_{idx} = {fmt(fa)} → no existe un mismo k que satisfaga todas las componentes.")
+            return False, None, pasos, ""
+
+        k_local = Fraction(0) if fa == 0 else (fa / fb).limit_denominator()
+        pasos.append(f"  • Componente {idx}: {fmt(fa)} = {fmt(k_local)}·{fmt(fb)}")
+
+        if ratio is None:
+            ratio = k_local
+            continue
+
+        if k_local != ratio:
+            pasos.append(f"  × El valor de k cambió (antes {fmt(ratio)}, ahora {fmt(k_local)}) → no son múltiplos.")
+            return False, None, pasos, ""
+
+    # Si nunca se fijó ratio (ambos vectores eran 0 en todas las entradas), tomamos k = 0.
+    if ratio is None:
+        ratio = Fraction(0)
+
+    conclusion = f"Se verifica que v₁ = {fmt(ratio)}·v₂"
+    if ratio != 0:
+        inv = (Fraction(1) / ratio).limit_denominator()
+        conclusion += f" (equivalentemente, v₂ = {fmt(inv)}·v₁)."
+    else:
+        conclusion += " (v₁ es el vector cero y por tanto múltiplo trivial de v₂)."
+
+    pasos.append(f"  ✓ Todas las componentes son consistentes con k = {fmt(ratio)}.")
+    return True, ratio, pasos, conclusion
 
 
 
@@ -70,6 +104,7 @@ def son_linealmente_independientes(vectores, metodo="gauss"):
 
     resultado = ""
     reglas_aplicadas = []
+    detalle_multiplos = ""
 
     # ---------- reglas básicas ----------
     for idx, v in enumerate(vectores):
@@ -83,14 +118,19 @@ def son_linealmente_independientes(vectores, metodo="gauss"):
         else:
             reglas_aplicadas.append("• El único vector es el vector cero, por lo que el conjunto es linealmente dependiente.")
     if p == 2:
-        if son_multiplos(vectores[0], vectores[1]):
+        es_mult, k_mult, pasos_mult, conclusion_mult = son_multiplos(vectores[0], vectores[1])
+        if es_mult:
             reglas_aplicadas.append("• Un conjunto de dos vectores {v₁, v₂} es linealmente dependiente si al menos uno de los vectores es un múltiplo del otro.")
+            pasos_mult.append(f"Conclusión: {conclusion_mult}")
+            detalle_multiplos = "🧮 Comprobación de múltiplos para {v₁, v₂}:\n" + "\n".join(pasos_mult) + "\n"
         else:
             reglas_aplicadas.append("• Un conjunto de dos vectores {v₁, v₂} es linealmente independiente si y solo si ninguno de los vectores es un múltiplo del otro.")
 
     if p <= 2 and reglas_aplicadas and not (metodo == "determinante" and p == n):
         resultado += "📘 Reglas aplicadas:\n" + "\n".join(reglas_aplicadas) + "\n\n"
         if any("es linealmente dependiente" in r for r in reglas_aplicadas):
+            if detalle_multiplos:
+                resultado += detalle_multiplos
             resultado += "❌ El conjunto es linealmente DEPENDIENTE.\n"
             return False, resultado
         else:
