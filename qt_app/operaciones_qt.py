@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QDialogButtonBox,
     QInputDialog,
     QListWidget,
+    QTabWidget,
 )
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QTextCursor
@@ -63,6 +64,8 @@ class OperacionesMatricesWindow(QMainWindow):
         self.objects = {}  # nombre -> {"type": "matrix"/"vector"/"scalar", "value": ...}
         self.matrix_entries = []
         self.vector_entries = []
+        self.saved_results = []  # lista de {'name', 'expr', 'proc', 'result'}
+        self._last_eval = None
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -279,10 +282,18 @@ class OperacionesMatricesWindow(QMainWindow):
 
     def _build_result_card(self) -> QFrame:
         card, lay = self._card("Resultado")
+        btn_row = QHBoxLayout(); btn_row.setSpacing(8)
+        clear_btn = QPushButton("Limpiar pantalla"); clear_btn.clicked.connect(self._limpiar_pantalla)
+        save_btn = QPushButton("Guardar resultado"); save_btn.clicked.connect(self._guardar_resultado)
+        show_btn = QPushButton("Mostrar guardados"); show_btn.clicked.connect(self._mostrar_guardados)
+        btn_row.addWidget(clear_btn)
+        btn_row.addWidget(save_btn)
+        btn_row.addWidget(show_btn)
+        btn_row.addStretch(1)
+        lay.addLayout(btn_row)
+
         self.result_box = QTextEdit(); self.result_box.setReadOnly(True)
         bind_font_scale_stylesheet(self.result_box, "font-family:Consolas,monospace;font-size:{body}px;", body=12)
-        clear_btn = QPushButton("Limpiar pantalla"); clear_btn.clicked.connect(self._limpiar_pantalla)
-        lay.addWidget(clear_btn, alignment=Qt.AlignRight)
         lay.addWidget(self.result_box, 1)
         return card
 
@@ -1317,6 +1328,14 @@ class OperacionesMatricesWindow(QMainWindow):
             html.append(self._pre(self._format_value(res)))
             self.result_box.setHtml("\n".join(html))
             self.result_box.moveCursor(QTextCursor.End)
+
+            # Guarda data del ultimo calculo para botones de guardado
+            self._last_eval = {
+                "expr": expr,
+                "proc_text": "\n".join(proc),
+                "steps_text": "\n".join(pasos) if pasos else "Pasos no disponibles para esta expresion.",
+                "result_text": self._format_value(res),
+            }
         except Exception as exc:
             QMessageBox.warning(self, "Error", f"No se pudo evaluar: {exc}")
 
@@ -1326,6 +1345,60 @@ class OperacionesMatricesWindow(QMainWindow):
 
     def _pre(self, text):
         return "<pre style='padding:10px;'>" + text + "</pre>"
+
+    # ---------------- Guardar y mostrar resultados ----------------
+    def _guardar_resultado(self):
+        if not self._last_eval:
+            QMessageBox.information(self, "Aviso", "Primero calcula una expresion para guardar su resultado.")
+            return
+        default_name = self._last_eval.get("expr", "resultado")[:40]
+        name, ok = QInputDialog.getText(self, "Guardar resultado", "Nombre:", text=default_name)
+        if not ok:
+            return
+        name = (name or "").strip()
+        if not name:
+            QMessageBox.warning(self, "Aviso", "Ingresa un nombre valido.")
+            return
+        entry = {
+            "name": name,
+            "expr": self._last_eval.get("expr", ""),
+            "proc": self._last_eval.get("proc_text", ""),
+            "result": self._last_eval.get("result_text", ""),
+        }
+        self.saved_results.append(entry)
+        QMessageBox.information(self, "Guardado", f"Se guardo el resultado como '{name}'.")
+
+    def _mostrar_guardados(self):
+        if not self.saved_results:
+            QMessageBox.information(self, "Guardados", "No hay resultados guardados todavia.")
+            return
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Resultados guardados")
+        lay = QVBoxLayout(dlg)
+
+        combo = QComboBox()
+        for item in self.saved_results:
+            combo.addItem(item["name"])
+        lay.addWidget(combo)
+
+        tabs = QTabWidget()
+        proc_view = QTextEdit(); proc_view.setReadOnly(True)
+        res_view = QTextEdit(); res_view.setReadOnly(True)
+        tabs.addTab(proc_view, "Procedimiento")
+        tabs.addTab(res_view, "Resultado")
+        lay.addWidget(tabs, 1)
+
+        def load(idx):
+            if idx < 0 or idx >= len(self.saved_results):
+                return
+            item = self.saved_results[idx]
+            proc_view.setPlainText(item.get("proc", ""))
+            res_view.setPlainText(item.get("result", ""))
+
+        combo.currentIndexChanged.connect(load)
+        load(0)
+        dlg.resize(640, 480)
+        dlg.exec()
 
 
 # Modo directo
