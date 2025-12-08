@@ -4,6 +4,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
     QGridLayout,
+    QBoxLayout,
     QLabel,
     QPushButton,
     QLineEdit,
@@ -337,7 +338,10 @@ class OperacionesMatricesWindow(QMainWindow):
         except Exception:
             QMessageBox.warning(self, "Aviso", "Dimension de vector no valida.")
             return
+        orientation = self.vec_orientation.currentData() or "col"
         self._clear_layout(self.vector_grid)
+        # Ajusta direccion del layout segun orientacion elegida
+        self.vector_grid.setDirection(QBoxLayout.LeftToRight if orientation == "row" else QBoxLayout.TopToBottom)
         self.vector_entries = []
         for _ in range(n):
             e = QLineEdit(); e.setAlignment(Qt.AlignCenter); e.setPlaceholderText("0")
