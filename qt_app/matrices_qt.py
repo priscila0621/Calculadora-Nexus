@@ -1937,22 +1937,43 @@ class DeterminanteMatrizWindow(_BaseMatrixWindow):
             )
             self.actions_layout.addWidget(self.result_container)
 
-            # Panel para propiedad det(kA) = k^n det(A) con estilo limpio y entradas editables
-            scaled_frame = QFrame()
-            scaled_frame.setObjectName("ScaledDetPanel")
-            scaled_frame.setStyleSheet(
+            # Badge destacado del determinante calculado
+            self.actions_layout.addWidget(self.det_badge, 0, Qt.AlignTop)
+
+            # Toggle para opciones avanzadas
+            toggle_row = QHBoxLayout()
+            toggle_row.setContentsMargins(0, 0, 0, 0)
+            toggle_row.setSpacing(8)
+            self.adv_btn = QPushButton("Opciones avanzadas")
+            self.adv_btn.setCheckable(True)
+            # Usa paleta del sistema, solo bordes suaves
+            self.adv_btn.setStyleSheet(
+                "QPushButton {border:1px solid rgba(120,120,120,0.35);border-radius:8px;padding:6px 12px;}"
+                "QPushButton:checked {background:palette(button); border:1px solid rgba(120,120,120,0.55);}"
+            )
+            self.adv_btn.clicked.connect(self._toggle_adv_panel)
+            toggle_row.addWidget(self.adv_btn, 0, Qt.AlignLeft)
+            toggle_row.addStretch(1)
+            self.actions_layout.addLayout(toggle_row)
+
+            # Panel para propiedad det(kA) = k^n det(A) (oculto por defecto)
+            self.scaled_frame = QFrame()
+            self.scaled_frame.setObjectName("ScaledDetPanel")
+            self.scaled_frame.setStyleSheet(
                 "QFrame#ScaledDetPanel {"
                 "background-color: #fff6fb;"
                 "border: 1px solid rgba(178, 118, 143, 0.32);"
                 "border-radius: 12px;"
                 "}"
             )
-            scaled_v = QVBoxLayout(scaled_frame)
+            scaled_v = QVBoxLayout(self.scaled_frame)
             scaled_v.setContentsMargins(14, 12, 14, 12)
             scaled_v.setSpacing(8)
 
             title_row = QHBoxLayout()
-            title_row.addWidget(QLabel("Propiedad: det(kA) = k^n · det(A)"))
+            desc = QLabel("Propiedad de determinantes: det(kA) = k^n · det(A) | Ingresa k, det(A) y el orden n a usar.")
+            desc.setWordWrap(False)
+            title_row.addWidget(desc)
             title_row.addStretch(1)
             scaled_v.addLayout(title_row)
 
@@ -1976,10 +1997,13 @@ class DeterminanteMatrizWindow(_BaseMatrixWindow):
             self.det_a_edit.setClearButtonEnabled(True)
             form.addWidget(self.det_a_edit, 0, 3)
 
-            form.addWidget(QLabel("Orden n (matriz actual):"), 1, 0, alignment=Qt.AlignRight)
-            self.n_label = QLabel("-")
-            self.n_label.setStyleSheet("padding:4px 8px;border:1px solid rgba(178,118,143,0.3);border-radius:8px;color:#6b2f44;")
-            form.addWidget(self.n_label, 1, 1, 1, 1, alignment=Qt.AlignLeft)
+            form.addWidget(QLabel("Orden n:"), 1, 0, alignment=Qt.AlignRight)
+            self.n_adv_edit = QLineEdit()
+            self.n_adv_edit.setPlaceholderText("Ej: 3")
+            self.n_adv_edit.setFixedWidth(80)
+            self.n_adv_edit.setAlignment(Qt.AlignCenter)
+            self.n_adv_edit.setClearButtonEnabled(True)
+            form.addWidget(self.n_adv_edit, 1, 1, 1, 1, alignment=Qt.AlignLeft)
 
             btn_scaled = QPushButton("Calcular det(kA)")
             btn_scaled.clicked.connect(self._calc_det_escalado)
@@ -1991,18 +2015,19 @@ class DeterminanteMatrizWindow(_BaseMatrixWindow):
             self.det_escalado_label = QLabel("det(kA) = —")
             self.det_escalado_label.setStyleSheet("font-weight:700;color:#7a2e4d;")
             scaled_v.addWidget(self.det_escalado_label)
-            self.det_escalado_steps = QLabel("Ingresa k y det(A), se aplica k^n con n del tamaño de la matriz.")
+            self.det_escalado_steps = QLabel("Si dejas n vacío, se usará el orden de la matriz actual (requiere matriz cuadrada).")
             self.det_escalado_steps.setWordWrap(True)
             self.det_escalado_steps.setStyleSheet("color:#6b2f44;")
             scaled_v.addWidget(self.det_escalado_steps)
 
-            self.actions_layout.addWidget(scaled_frame)
-            self.actions_layout.addWidget(self.det_badge, 0, Qt.AlignTop)
+            self.scaled_frame.setVisible(False)
+            self.actions_layout.addWidget(self.scaled_frame)
             self.actions_layout.addStretch(1)
+
             try:
-                self.f_edit.textChanged.connect(self._update_n_label)
-                self.c_edit.textChanged.connect(self._update_n_label)
-                self._update_n_label()
+                self.f_edit.textChanged.connect(self._sync_adv_order)
+                self.c_edit.textChanged.connect(self._sync_adv_order)
+                self._sync_adv_order()
             except Exception:
                 pass
         except Exception:
@@ -2035,15 +2060,32 @@ class DeterminanteMatrizWindow(_BaseMatrixWindow):
         self.result_box.insertPlainText(f"\nDeterminante: {det}\n")
 
     def _calc_det_escalado(self):
-        """Calcula det(kA) = k^n det(A) con n el orden actual (filas)."""
+        """Calcula det(kA) = k^n det(A) usando n ingresado o, si falta, el orden de la matriz."""
+        # Determinar n: prioridad al campo avanzado; si está vacío, usar filas/columnas si son válidas y cuadradas
         try:
-            n = int(self.f_edit.text())
-            c = int(self.c_edit.text())
-            if n <= 0 or c <= 0 or n != c:
-                raise ValueError
+            n_text = (self.n_adv_edit.text() if hasattr(self, "n_adv_edit") else "").strip()
         except Exception:
-            QMessageBox.warning(self, "Dato inválido", "Para det(kA) usa una matriz cuadrada con n > 0.")
-            return
+            n_text = ""
+
+        n_val = None
+        if n_text:
+            try:
+                n_val = int(n_text)
+                if n_val <= 0:
+                    raise ValueError
+            except Exception:
+                QMessageBox.warning(self, "Dato inválido", "Ingresa un entero positivo para n o deja el campo vacío.")
+                return
+        else:
+            try:
+                n_guess = int(self.f_edit.text())
+                c_guess = int(self.c_edit.text())
+                if n_guess <= 0 or c_guess <= 0 or n_guess != c_guess:
+                    raise ValueError
+                n_val = n_guess
+            except Exception:
+                QMessageBox.warning(self, "Dato inválido", "Define un n válido (campo n) o usa una matriz cuadrada con n > 0.")
+                return
 
         try:
             k_val = Fraction(self.k_edit.text().strip().replace(",", ".") or "0")
@@ -2052,27 +2094,43 @@ class DeterminanteMatrizWindow(_BaseMatrixWindow):
             QMessageBox.warning(self, "Dato inválido", "Ingresa valores numéricos válidos para k y det(A).")
             return
 
-        potencia = k_val ** n
+        potencia = k_val ** n_val
         resultado = potencia * det_a_val
 
-        self.n_label.setText(str(n))
+        try:
+            if hasattr(self, "n_adv_edit"):
+                if not n_text:
+                    self.n_adv_edit.setText(str(n_val))
+        except Exception:
+            pass
+
         self.det_escalado_label.setText(f"det({k_val}A) = {resultado}")
         pasos = [
             "Propiedad: det(kA) = k^n · det(A)",
-            f"n = {n}",
+            f"n = {n_val}",
             f"k^n = {potencia}",
             f"det(kA) = {potencia} · {det_a_val} = {resultado}",
         ]
         self.det_escalado_steps.setText(" | ".join(pasos))
 
-    def _update_n_label(self):
-        """Sincroniza la etiqueta de orden con los campos de filas/columnas."""
+    def _sync_adv_order(self):
+        """Si el campo n está vacío, sincroniza con el tamaño cuadrado actual."""
         try:
+            if hasattr(self, "n_adv_edit") and self.n_adv_edit.text().strip():
+                return
             n = int(self.f_edit.text())
             c = int(self.c_edit.text())
-            self.n_label.setText(str(n) if n == c and n > 0 else "-")
+            if n > 0 and n == c:
+                self.n_adv_edit.setText(str(n))
         except Exception:
-            self.n_label.setText("-")
+            pass
+
+    def _toggle_adv_panel(self, checked: bool):
+        """Muestra/oculta las opciones avanzadas."""
+        try:
+            self.scaled_frame.setVisible(bool(checked))
+        except Exception:
+            pass
 
 
 # LÃ³gica de determinante con el mismo formato que Tk
