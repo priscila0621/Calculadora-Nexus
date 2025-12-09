@@ -341,11 +341,23 @@ class LeontiefWindow(QMainWindow):
         else:
             header = "Vector de producción total X"
             body = "\n".join(self._vector_lines(soluciones))
+            # También mostrar en decimales cuando sea posible
+            decimales = []
+            for val in soluciones:
+                if isinstance(val, Fraction):
+                    dec = float(val)
+                    decimales.append(f"{dec:.6f}")
+                else:
+                    decimales.append(str(val))
+            body_dec = "\n".join(self._vector_lines(decimales)) if decimales else ""
             desc = ""
             if tipo == "indeterminado":
                 desc = "<div class='comment'>El sistema tiene infinitas soluciones (forma paramétrica).</div>"
             cards.append(
-                f"<div class='card'><div class='card-title'>{header}</div>{desc}<pre>{body}</pre></div>"
+                f"<div class='card'><div class='card-title'>{header}</div>{desc}"
+                f"<div class='comment'>En fracciones</div><pre>{body}</pre>"
+                f"<div class='comment'>En decimales</div><pre>{body_dec}</pre>"
+                f"</div>"
             )
 
         # Mostrar forma vectorial si hay variables libres
