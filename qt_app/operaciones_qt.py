@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QTextCursor
 from fractions import Fraction
+import re
 from determinante_matriz_app import determinante_con_pasos
 from .theme import bind_font_scale_stylesheet, bind_theme_icon, make_overflow_icon, gear_icon_preferred
 from .settings_qt import open_settings_dialog
@@ -641,12 +642,17 @@ class OperacionesMatricesWindow(QMainWindow):
             v = "v" if u != "v" else "w"
             return f"{A}*({u} - 3{v})"
 
+        def template_cancel_zero():
+            A = first_of_type("matrix", "A")
+            return f"{A}+X=0"
+
         return [
             ("A(u+v)", template_av),
             ("Au + Av", template_distrib),
             ("3A + 2B", template_lineal_combo),
             ("A(Bu+Cv)", template_nested),
             ("A*(u-3v)", template_mix),
+            ("A + X = 0", template_cancel_zero),
         ]
 
     # ---------------- Algebra ----------------
@@ -1321,16 +1327,49 @@ class OperacionesMatricesWindow(QMainWindow):
             return "Producto de expresiones (aplica reglas por termino)."
         return "Operacion compuesta (se muestran los pasos detallados)."
 
+    def _solve_a_plus_x_eq_zero(self, expr: str):
+        """Detecta expresiones del tipo A+X=0 y devuelve X=-A con pasos claros."""
+        expr_clean = expr.replace(" ", "")
+        match = re.fullmatch(r"([A-Za-z])\+X=0", expr_clean)
+        if not match:
+            return None
+        name = match.group(1)
+        if name not in self.objects:
+            raise ValueError(f"Matriz '{name}' no definida.")
+        obj = self.objects[name]
+        if obj.get("type") != "matrix":
+            raise ValueError(f"'{name}' debe ser una matriz para usar A + X = 0.")
+        A = obj["value"]
+        res_matrix = [[-v for v in fila] for fila in A]
+        m = len(A); n = len(A[0]) if m else 0
+        pasos = [
+            f"Partimos de {name} + X = 0.",
+            f"Despeje: X = -{name} (inverso aditivo).",
+            "Aplicamos el signo negativo a cada entrada de la matriz.",
+        ]
+        rule = "Propiedad: si A + X = 0, entonces X = -A (inverso aditivo de matrices)."
+        types_lines = [f"{name}: matriz {m}×{n}", f"X: matriz {m}×{n}"]
+        res = {"type": "matrix", "value": res_matrix}
+        return res, pasos, rule, types_lines, name
+
     def _calcular_expresion(self):
         expr = self.expr_edit.toPlainText().strip()
         if not expr:
             QMessageBox.information(self, "Aviso", "Escribe una expresion.")
             return
         try:
-            tokens = self._tokenize(expr)
-            ast = self._parse(tokens)
-            pasos = []
-            res, _ = self._eval_with_log(ast, pasos)
+            # Caso especial: resolver A + X = 0 (X = -A)
+            special_label = None
+            special = self._solve_a_plus_x_eq_zero(expr)
+            if special:
+                res, pasos, rule, types_lines, name_used = special
+                special_label = f"X = -{name_used}"
+                ast = None
+            else:
+                tokens = self._tokenize(expr)
+                ast = self._parse(tokens)
+                pasos = []
+                res, _ = self._eval_with_log(ast, pasos)
 
             # Valores guardados (lista con representacion y tamano)
             saved_lines = []
@@ -1364,14 +1403,15 @@ class OperacionesMatricesWindow(QMainWindow):
                     return f"constante: escalar {_fmt(n[1])}"
                 return "expresion compuesta"
 
-            types_lines = []
-            if ast[0] == 'op':
-                left = ast[2]; right = ast[3]
-                types_lines.append(node_ident(left))
-                types_lines.append(node_ident(right))
-
-            # Regla aplicada (simple heuristica sobre el nodo raiz)
-            rule = self._rule_from_ast(ast)
+            if special:
+                pass
+            else:
+                types_lines = []
+                if ast and ast[0] == 'op':
+                    left = ast[2]; right = ast[3]
+                    types_lines.append(node_ident(left))
+                    types_lines.append(node_ident(right))
+                rule = self._rule_from_ast(ast)
 
             # Procedimiento: usar pasos generados por _eval_with_log
             proc = []
@@ -1407,7 +1447,10 @@ class OperacionesMatricesWindow(QMainWindow):
             html.append('<b>Procedimiento paso a paso</b>')
             html.append(self._pre('\n'.join(pasos) if pasos else 'Pasos no disponibles para esta expresion.'))
             html.append('<b>Resultado final</b>')
-            html.append(self._pre(self._format_value(res)))
+            if special_label:
+                html.append(self._pre(f"{special_label}\n{self._format_value(res)}"))
+            else:
+                html.append(self._pre(self._format_value(res)))
             self.result_box.setHtml("\n".join(html))
             self.result_box.moveCursor(QTextCursor.End)
 
@@ -1416,7 +1459,7 @@ class OperacionesMatricesWindow(QMainWindow):
                 "expr": expr,
                 "proc_text": "\n".join(proc),
                 "steps_text": "\n".join(pasos) if pasos else "Pasos no disponibles para esta expresion.",
-                "result_text": self._format_value(res),
+                "result_text": (f"{special_label}\n" if special_label else "") + self._format_value(res),
             }
         except Exception as exc:
             QMessageBox.warning(self, "Error", f"No se pudo evaluar: {exc}")
