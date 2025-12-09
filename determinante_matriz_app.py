@@ -197,6 +197,8 @@ class DeterminanteMatrizApp:
                   foreground=[("!disabled", "#b91c1c"), ("active", "#7f1d1d")])
 
         self.n_var = tk.StringVar(value="3")
+        self.k_var = tk.StringVar(value="2")
+        self.det_a_var = tk.StringVar(value="5")
         self.entries: List[List[tk.Entry]] = []
 
         container = ttk.Frame(self.root, padding=16)
@@ -233,6 +235,34 @@ class DeterminanteMatrizApp:
         ttk.Button(botones, text="Limpiar entradas", command=self._limpiar).grid(row=0, column=1, padx=6, pady=4)
         ttk.Button(botones, text="Ver reglas", command=self._mostrar_reglas).grid(row=0, column=2, padx=6, pady=4)
         ttk.Button(botones, text="Mostrar procedimiento", command=self._mostrar_procedimiento).grid(row=0, column=3, padx=6, pady=4)
+
+        # Apartado para la propiedad det(kA) = k^n det(A)
+        escala_frame = ttk.LabelFrame(acciones, text="Determinante de matriz escalada (kA)", padding=10)
+        escala_frame.grid(row=1, column=0, sticky="ew", pady=(12, 0))
+        escala_frame.columnconfigure(3, weight=1)
+
+        ttk.Label(escala_frame, text="k:").grid(row=0, column=0, padx=4, pady=4, sticky="w")
+        tk.Entry(escala_frame, width=8, justify="center", textvariable=self.k_var, bg="#fff0f5").grid(
+            row=0, column=1, padx=4, pady=4
+        )
+
+        ttk.Label(escala_frame, text="det(A):").grid(row=0, column=2, padx=4, pady=4, sticky="w")
+        tk.Entry(escala_frame, width=10, justify="center", textvariable=self.det_a_var, bg="#fff0f5").grid(
+            row=0, column=3, padx=4, pady=4, sticky="w"
+        )
+
+        ttk.Label(escala_frame, text="Orden n:" ).grid(row=0, column=4, padx=8, pady=4, sticky="w")
+        ttk.Label(escala_frame, textvariable=self.n_var, width=4, anchor="center").grid(row=0, column=5, padx=4, pady=4)
+
+        ttk.Button(escala_frame, text="Calcular det(kA)", style="Primary.TButton", command=self._calcular_det_escalado).grid(
+            row=0, column=6, padx=8, pady=4
+        )
+
+        self.det_escalado_value = ttk.Label(escala_frame, text="det(kA) = —", font=("Segoe UI", 12, "bold"), foreground="#b91c1c")
+        self.det_escalado_value.grid(row=1, column=0, columnspan=7, sticky="w", padx=4, pady=(6, 2))
+
+        self.det_escalado_pasos = ttk.Label(escala_frame, text="Usa det(kA) = k^n · det(A)", foreground="#7f1d1d")
+        self.det_escalado_pasos.grid(row=2, column=0, columnspan=7, sticky="w", padx=4, pady=(0, 4))
 
         resultado_frame = ttk.Frame(container)
         resultado_frame.grid(row=4, column=0, sticky="nsew")
@@ -693,6 +723,40 @@ class DeterminanteMatrizApp:
 
         cerrar = ttk.Button(right, text="Cerrar", command=ventana.destroy)
         cerrar.pack(pady=8)
+
+    def _calcular_det_escalado(self):
+        """Calcula det(kA) usando la propiedad det(kA) = k^n det(A)."""
+        try:
+            n = int(self.n_var.get())
+            if n <= 0:
+                raise ValueError
+        except Exception:
+            messagebox.showerror("Valor inválido", "Introduce un entero positivo para n.")
+            return
+
+        try:
+            k_text = self.k_var.get().strip().replace(",", ".")
+            det_a_text = self.det_a_var.get().strip().replace(",", ".")
+            if k_text == "" or det_a_text == "":
+                raise ValueError("Completa k y det(A).")
+            k_val = Fraction(k_text)
+            det_a_val = Fraction(det_a_text)
+        except Exception:
+            messagebox.showerror("Valor inválido", "Usa números válidos para k y det(A).")
+            return
+
+        potencia = k_val ** n
+        resultado = potencia * det_a_val
+
+        self.det_escalado_value.config(text=f"det({ _fmt_ascii(k_val) }A) = {_fmt_ascii(resultado)}")
+
+        pasos_lines = (
+            f"Propiedad: det(kA) = k^n · det(A)",
+            f"n = {n}",
+            f"k^n = {_fmt_ascii(potencia)}",
+            f"det(kA) = {_fmt_ascii(potencia)} · {_fmt_ascii(det_a_val)} = {_fmt_ascii(resultado)}",
+        )
+        self.det_escalado_pasos.config(text=" | ".join(pasos_lines))
 
     def _volver_al_inicio(self):
         try:
