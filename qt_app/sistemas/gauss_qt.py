@@ -8,7 +8,13 @@ from PySide6.QtGui import QTextCursor
 from fractions import Fraction
 from copy import deepcopy
 import re
-from ..theme import bind_font_scale_stylesheet, bind_theme_icon, make_overflow_icon, gear_icon_preferred
+from ..theme import (
+    bind_font_scale_stylesheet,
+    bind_theme_icon,
+    make_overflow_icon,
+    gear_icon_preferred,
+    help_icon_preferred,
+)
 from ..settings_qt import open_settings_dialog
 
 
@@ -135,6 +141,8 @@ class GaussWindow(QMainWindow):
         except Exception:
             act_settings = menu.addAction("Configuración")
         act_settings.triggered.connect(self._open_settings)
+        act_help = menu.addAction(help_icon_preferred(20), "Ayuda")
+        act_help.triggered.connect(self._open_help)
         more_btn.setMenu(menu)
         top.addWidget(more_btn, 0, Qt.AlignRight)
 
@@ -857,6 +865,18 @@ class GaussWindow(QMainWindow):
 
     def _open_settings(self):
         open_settings_dialog(self)
+
+    def _open_help(self):
+        text = (
+            "Ajusta filas y columnas con los deslizadores para construir la matriz aumentada (A|b).\n"
+            "Ingresa coeficientes y pulsa \"Resolver\" para obtener la forma escalonada y la solución.\n"
+            "También puedes cargar ecuaciones desde el diálogo de \"Ingresar ecuaciones\".\n\n"
+            "El menú de tres puntos incluye Configuración y esta Ayuda."
+        )
+        try:
+            QMessageBox.information(self, "Ayuda", text)
+        except Exception:
+            pass
 
     def _parse_equations_text(self, text: str):
         """Parsea texto con una ecuación por línea y devuelve la matriz aumentada inferida."""

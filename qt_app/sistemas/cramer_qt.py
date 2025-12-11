@@ -4,7 +4,15 @@ from PySide6.QtWidgets import (
     QToolButton, QMenu, QDialog, QDialogButtonBox, QPlainTextEdit
 )
 from PySide6.QtCore import Qt, QSize
-from ..theme import install_toggle_shortcut, bind_font_scale_stylesheet, scaled_font_px, bind_theme_icon, make_overflow_icon, gear_icon_preferred
+from ..theme import (
+    install_toggle_shortcut,
+    bind_font_scale_stylesheet,
+    scaled_font_px,
+    bind_theme_icon,
+    make_overflow_icon,
+    gear_icon_preferred,
+    help_icon_preferred,
+)
 from ..settings_qt import open_settings_dialog
 from fractions import Fraction
 from ..matrices_qt import determinante_con_pasos as determinante_con_pasos_ascii
@@ -204,6 +212,8 @@ class CramerWindow(QMainWindow):
         menu = QMenu(more_btn)
         act_settings = menu.addAction(gear_icon_preferred(22), 'Configuración')
         act_settings.triggered.connect(self._open_settings)
+        act_help = menu.addAction(help_icon_preferred(20), 'Ayuda')
+        act_help.triggered.connect(self._open_help)
         more_btn.setMenu(menu)
         top.addWidget(more_btn, 0, Qt.AlignRight)
 
@@ -604,6 +614,19 @@ class CramerWindow(QMainWindow):
     def _open_settings(self):
         open_settings_dialog(self)
 
+    def _open_help(self):
+        text = (
+            "Usa una matriz aumentada n x (n+1): las primeras columnas son coeficientes y la última es el vector b.\n"
+            "1) Ajusta filas/columnas con los deslizadores.\n"
+            "2) Llena la matriz o importa ecuaciones desde el botón \"Ingresar ecuaciones\".\n"
+            "3) Presiona \"Resolver\"; se calcula det(A) y cada det(A_i) para obtener las variables.\n\n"
+            "Si det(A) = 0, el método de Cramer no aplica."
+        )
+        try:
+            QMessageBox.information(self, "Ayuda", text)
+        except Exception:
+            pass
+
     def _resolver(self):
         try:
             A_aug = self._leer_matriz()
@@ -871,4 +894,3 @@ class CramerWindow(QMainWindow):
             self.result_highlight.setMinimumHeight(total_h)
         except Exception:
             pass
-

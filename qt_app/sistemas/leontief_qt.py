@@ -27,7 +27,7 @@ from .gauss_jordan_qt import (
     vectores_columna_lado_a_lado,
     imprimir_vectores_con_x_igual,
 )
-from ..theme import bind_theme_icon, make_overflow_icon, gear_icon_preferred
+from ..theme import bind_theme_icon, make_overflow_icon, gear_icon_preferred, help_icon_preferred
 from ..settings_qt import open_settings_dialog
 
 
@@ -97,6 +97,8 @@ class LeontiefWindow(QMainWindow):
         except Exception:
             act_settings = menu.addAction("Configuración")
         act_settings.triggered.connect(self._open_settings)
+        act_help = menu.addAction(help_icon_preferred(20), "Ayuda")
+        act_help.triggered.connect(self._open_help)
         more_btn.setMenu(menu)
         top.addWidget(more_btn, 0, Qt.AlignRight)
 
@@ -183,6 +185,19 @@ class LeontiefWindow(QMainWindow):
             open_settings_dialog(self)
         except Exception as exc:
             QMessageBox.critical(self, "Error", f"No se pudo abrir configuración: {exc}")
+
+    def _open_help(self):
+        text = (
+            "Modelo (I - C) * X = D:\n"
+            "1) Define n (tamaño de la matriz de consumo) y crea las tablas.\n"
+            "2) Llena la matriz C y el vector de demanda D.\n"
+            "3) Pulsa \"Resolver modelo\" para calcular X y ver el procedimiento.\n\n"
+            "Tip: usa Limpiar para reiniciar y el menú de tres puntos para Configuración/Ayuda."
+        )
+        try:
+            QMessageBox.information(self, "Ayuda", text)
+        except Exception:
+            pass
 
     def crear_tablas(self):
         n = int(self.spin_n.value())

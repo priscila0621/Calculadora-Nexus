@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QSizePolicy,
     QToolButton,
     QMenu,
+    QMessageBox,
 )
 from PySide6.QtCore import Qt, QSize
 from .menu_matrices_qt import MenuMatricesWindow
@@ -27,6 +28,7 @@ from .theme import (
     bind_theme_icon,
     gear_icon_preferred,
     back_icon_preferred,
+    help_icon_preferred,
 )
 from .settings_qt import open_settings_dialog
 
@@ -66,6 +68,8 @@ class MenuPrincipalWindow(QMainWindow):
         gmenu = QMenu(more_btn_global)
         gact_settings = gmenu.addAction(gear_icon_preferred(22), "Configuración")
         gact_settings.triggered.connect(self._open_settings)
+        gact_help = gmenu.addAction(help_icon_preferred(20), "Ayuda")
+        gact_help.triggered.connect(self._open_help)
         more_btn_global.setMenu(gmenu)
         global_top.addWidget(more_btn_global)
         outer.addLayout(global_top)
@@ -298,6 +302,19 @@ class MenuPrincipalWindow(QMainWindow):
 
     def _open_settings(self):
         open_settings_dialog(self)
+
+    def _open_help(self):
+        text = (
+            "Selecciona un m\u00f3dulo desde el panel lateral para abrir su ventana.\n"
+            "- \u00c1lgebra lineal: sistemas, matrices, independencia y transformaciones.\n"
+            "- M\u00e9todos num\u00e9ricos: visible cuando el contexto no es solo \u00e1lgebra.\n\n"
+            "Tip: el men\u00fa de tres puntos permite Configuraci\u00f3n y aqu\u00ed mismo la Ayuda. "
+            "Ctrl+D alterna entre tema claro y oscuro."
+        )
+        try:
+            QMessageBox.information(self, "Ayuda", text)
+        except Exception:
+            pass
 
     def _go_back(self):
         self.close()

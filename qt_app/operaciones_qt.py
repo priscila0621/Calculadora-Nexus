@@ -27,7 +27,13 @@ from PySide6.QtGui import QTextCursor
 from fractions import Fraction
 import re
 from determinante_matriz_app import determinante_con_pasos
-from .theme import bind_font_scale_stylesheet, bind_theme_icon, make_overflow_icon, gear_icon_preferred
+from .theme import (
+    bind_font_scale_stylesheet,
+    bind_theme_icon,
+    make_overflow_icon,
+    gear_icon_preferred,
+    help_icon_preferred,
+)
 from .settings_qt import open_settings_dialog
 
 
@@ -95,6 +101,8 @@ class OperacionesMatricesWindow(QMainWindow):
         menu = QMenu(more_btn)
         act_settings = menu.addAction(gear_icon_preferred(22), "Configuración")
         act_settings.triggered.connect(self._open_settings)
+        act_help = menu.addAction(help_icon_preferred(20), "Ayuda")
+        act_help.triggered.connect(self._open_help)
         more_btn.setMenu(menu)
         topbar.addWidget(more_btn, 0, Qt.AlignRight)
         root.addLayout(topbar)
@@ -134,6 +142,19 @@ class OperacionesMatricesWindow(QMainWindow):
     def _open_settings(self):
         try:
             open_settings_dialog(self)
+        except Exception:
+            pass
+
+    def _open_help(self):
+        text = (
+            "Define matrices (A, B...), vectores (u, v...) y escalares, "
+            "asígnales un nombre y luego escribe la expresión a evaluar (ej: A(u+v), 3A+2B, A(Bu+Cv)).\n"
+            "Requisitos: dimensiones compatibles y uso de nombres guardados. "
+            "El panel derecho muestra los resultados y pasos.\n\n"
+            "Consejo: guarda resultados con nombres claros para reutilizarlos en nuevas expresiones."
+        )
+        try:
+            QMessageBox.information(self, "Ayuda", text)
         except Exception:
             pass
 

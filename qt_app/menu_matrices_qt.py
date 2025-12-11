@@ -8,9 +8,16 @@ from PySide6.QtWidgets import (
     QFrame,
     QToolButton,
     QMenu,
+    QMessageBox,
 )
 from PySide6.QtCore import Qt, QSize
-from .theme import install_toggle_shortcut, bind_theme_icon, make_overflow_icon, gear_icon_preferred
+from .theme import (
+    install_toggle_shortcut,
+    bind_theme_icon,
+    make_overflow_icon,
+    gear_icon_preferred,
+    help_icon_preferred,
+)
 from .settings_qt import open_settings_dialog
 
 
@@ -93,6 +100,8 @@ class MenuMatricesWindow(QMainWindow):
         menu = QMenu(more_btn)
         act_settings = menu.addAction(gear_icon_preferred(22), "Configuración")
         act_settings.triggered.connect(self._open_settings)
+        act_help = menu.addAction(help_icon_preferred(20), "Ayuda")
+        act_help.triggered.connect(self._open_help)
         more_btn.setMenu(menu)
         nav_lay.addWidget(more_btn, 0, Qt.AlignRight)
         outer_lay.addWidget(nav)
@@ -187,3 +196,14 @@ class MenuMatricesWindow(QMainWindow):
     def _open_settings(self):
         open_settings_dialog(self)
 
+    def _open_help(self):
+        text = (
+            "Barra superior: elige Suma, Resta, Multiplicación, Determinante, Transpuesta, "
+            "Inversa u Operaciones A(u,v). Cada botón abre la vista dedicada.\n\n"
+            "Sugerencia: después de terminar en un módulo, usa Volver en la esquina izquierda "
+            "para regresar a este menú."
+        )
+        try:
+            QMessageBox.information(self, "Ayuda", text)
+        except Exception:
+            pass

@@ -609,6 +609,32 @@ def make_gear_icon(size: int = 28, color: QColor | None = None, thickness: int =
     return QIcon(pm)
 
 
+def make_help_icon(size: int = 22, color: QColor | None = None, thickness: int = 2) -> QIcon:
+    """Dibuja un ícono de ayuda con círculo y signo de interrogación."""
+    app = QApplication.instance()
+    if color is None:
+        try:
+            color = app.palette().windowText().color() if app else QColor("#6E4B5E")
+        except Exception:
+            color = QColor("#6E4B5E")
+    pm = QPixmap(size, size)
+    pm.fill(Qt.transparent)
+    p = QPainter(pm)
+    p.setRenderHint(QPainter.Antialiasing)
+    pen = QPen(color, max(1, thickness), Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+    p.setPen(pen)
+    s = float(size)
+    r = s * 0.42
+    cx = cy = s * 0.5
+    p.drawEllipse(QRectF(cx - r, cy - r, 2 * r, 2 * r))
+    font = QFont(current_font_family(app), max(8, int(s * 0.55)))
+    font.setBold(True)
+    p.setFont(font)
+    p.drawText(pm.rect(), Qt.AlignCenter, "?")
+    p.end()
+    return QIcon(pm)
+
+
 def bind_theme_icon(tool_button, maker, *args, **kwargs) -> None:
     """Vincula un QToolButton para regenerar su ícono cuando cambia el tema."""
     import weakref as _weak
@@ -692,6 +718,13 @@ def gear_icon_preferred(size: int = 28) -> QIcon:
     if icon is not None:
         return icon
     return make_gear_icon(size=size)
+
+
+def help_icon_preferred(size: int = 22) -> QIcon:
+    icon = _icon_from_assets("help")
+    if icon is not None:
+        return icon
+    return make_help_icon(size=size)
 
 
 def back_icon_preferred(size: int = 24) -> QIcon:

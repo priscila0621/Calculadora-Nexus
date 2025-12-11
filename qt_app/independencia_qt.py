@@ -1,12 +1,19 @@
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QScrollArea, QGridLayout, QLineEdit, QTextEdit, QMessageBox, QFrame,
-    QComboBox,
+    QComboBox, QToolButton, QMenu,
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QSize
 from fractions import Fraction
 from independencia_lineal import son_linealmente_independientes
-from .theme import bind_font_scale_stylesheet
+from .theme import (
+    bind_font_scale_stylesheet,
+    bind_theme_icon,
+    make_overflow_icon,
+    gear_icon_preferred,
+    help_icon_preferred,
+)
+from .settings_qt import open_settings_dialog
 
 
 class IndependenciaWindow(QMainWindow):
@@ -21,6 +28,28 @@ class IndependenciaWindow(QMainWindow):
         lay = QVBoxLayout(outer)
         lay.setContentsMargins(24, 24, 24, 24)
         lay.setSpacing(16)
+
+        topbar = QHBoxLayout()
+        topbar.setContentsMargins(0, 0, 0, 0)
+        topbar.addStretch(1)
+        more_btn = QToolButton()
+        more_btn.setAutoRaise(True)
+        more_btn.setCursor(Qt.PointingHandCursor)
+        more_btn.setToolTip("Más opciones")
+        more_btn.setPopupMode(QToolButton.InstantPopup)
+        try:
+            bind_theme_icon(more_btn, make_overflow_icon, 20)
+            more_btn.setIconSize(QSize(20, 20))
+        except Exception:
+            pass
+        menu = QMenu(more_btn)
+        act_settings = menu.addAction(gear_icon_preferred(22), "Configuración")
+        act_settings.triggered.connect(self._open_settings)
+        act_help = menu.addAction(help_icon_preferred(20), "Ayuda")
+        act_help.triggered.connect(self._open_help)
+        more_btn.setMenu(menu)
+        topbar.addWidget(more_btn, 0, Qt.AlignRight)
+        lay.addLayout(topbar)
 
         title = QLabel("Independencia lineal de vectores")
         title.setObjectName("Title")
@@ -211,3 +240,20 @@ class IndependenciaWindow(QMainWindow):
         except Exception:
             pass
 
+    def _open_settings(self):
+        try:
+            open_settings_dialog(self)
+        except Exception:
+            pass
+
+    def _open_help(self):
+        text = (
+            "1) Define dimensión (filas) y cantidad de vectores (columnas) y pulsa \"Crear cuadrícula\".\n"
+            "2) Ingresa los valores de cada vector. Usa el selector de método: Gauss-Jordan o Determinante.\n"
+            "3) Presiona \"Verificar columnas\" (vectores columna) o \"Verificar filas\" según corresponda.\n\n"
+            "El menú de tres puntos incluye Configuración y esta Ayuda."
+        )
+        try:
+            QMessageBox.information(self, "Ayuda", text)
+        except Exception:
+            pass

@@ -7,7 +7,13 @@ from PySide6.QtCore import Qt, QSize
 from fractions import Fraction
 from copy import deepcopy
 import re
-from ..theme import bind_font_scale_stylesheet, bind_theme_icon, make_overflow_icon, gear_icon_preferred
+from ..theme import (
+    bind_font_scale_stylesheet,
+    bind_theme_icon,
+    make_overflow_icon,
+    gear_icon_preferred,
+    help_icon_preferred,
+)
 from ..settings_qt import open_settings_dialog
 
 
@@ -132,6 +138,8 @@ class GaussJordanWindow(QMainWindow):
         except Exception:
             act_settings = menu.addAction("Configuraci\u00f3n")
         act_settings.triggered.connect(self._open_settings)
+        act_help = menu.addAction(help_icon_preferred(20), "Ayuda")
+        act_help.triggered.connect(self._open_help)
         more_btn.setMenu(menu)
         top.addWidget(more_btn, 0, Qt.AlignRight)
 
@@ -292,6 +300,18 @@ class GaussJordanWindow(QMainWindow):
 
     def _open_settings(self):
         open_settings_dialog(self)
+
+    def _open_help(self):
+        text = (
+            "Construye la matriz aumentada (A|b) ajustando filas y columnas con los deslizadores.\n"
+            "Completa los coeficientes, opcionalmente importa ecuaciones con el botón correspondiente, "
+            "y usa \"Resolver\" para obtener la reducción completa Gauss-Jordan.\n\n"
+            "El menú de tres puntos ofrece Configuración y esta Ayuda."
+        )
+        try:
+            QMessageBox.information(self, "Ayuda", text)
+        except Exception:
+            pass
 
     def _parse_equations_text(self, text: str):
         """Parsea texto con una ecuacion por linea y devuelve la matriz aumentada inferida."""
@@ -851,9 +871,6 @@ def imprimir_vectores_con_x_igual(editor: QTextEdit, lines):
             editor.insertPlainText(" " * x_pos + x_eq + " " + l + "\n")
         else:
             editor.insertPlainText(" " * (x_pos + len(x_eq) + 1) + l + "\n")
-
-
-
 
 
 

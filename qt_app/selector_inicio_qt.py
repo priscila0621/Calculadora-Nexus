@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QMenu,
     QToolButton,
+    QMessageBox,
 )
 from PySide6.QtGui import QPixmap
 from PySide6.QtCore import Qt
@@ -22,6 +23,7 @@ from .theme import (
     bind_theme_icon,
     gear_icon_preferred,
     make_overflow_icon,
+    help_icon_preferred,
 )
 from .settings_qt import open_settings_dialog
 
@@ -57,6 +59,8 @@ class SelectorInicioWindow(QMainWindow):
         menu = QMenu(btn_more)
         act_settings = menu.addAction(gear_icon_preferred(22), "Configuración")
         act_settings.triggered.connect(self._open_settings)
+        act_help = menu.addAction(help_icon_preferred(20), "Ayuda")
+        act_help.triggered.connect(self._open_help)
         btn_more.setMenu(menu)
         top_bar.addWidget(btn_more, 0, Qt.AlignRight)
         outer.addLayout(top_bar)
@@ -141,6 +145,18 @@ class SelectorInicioWindow(QMainWindow):
     def _open_settings(self):
         open_settings_dialog(self)
 
+    def _open_help(self):
+        text = (
+            "Elige uno de los dos módulos principales:\n"
+            "- Álgebra Lineal abre el menú con sistemas, matrices y transformaciones.\n"
+            "- Métodos Numéricos abre el menú con Bisección, Falsa Posición, Newton-Raphson y Secante.\n\n"
+            "Usa el menú de tres puntos para Configuración o para regresar a esta ayuda."
+        )
+        try:
+            QMessageBox.information(self, "Ayuda", text)
+        except Exception:
+            pass
+
     def _build_card(self, title: str, img_relpath: str, on_click):
         card = QFrame()
         card.setObjectName("OptionCard")
@@ -215,6 +231,5 @@ class SelectorInicioWindow(QMainWindow):
         w.showMaximized()
         self._child = w
         self.hide()
-
 
 

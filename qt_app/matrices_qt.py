@@ -6,7 +6,13 @@
 )
 from PySide6.QtCore import Qt, QSize
 from fractions import Fraction
-from .theme import bind_font_scale_stylesheet, bind_theme_icon, make_overflow_icon, gear_icon_preferred
+from .theme import (
+    bind_font_scale_stylesheet,
+    bind_theme_icon,
+    make_overflow_icon,
+    gear_icon_preferred,
+    help_icon_preferred,
+)
 from .settings_qt import open_settings_dialog
 
 
@@ -61,7 +67,7 @@ class _BaseMatrixWindow(QMainWindow):
         menu = QMenu(more_btn)
         act_settings = menu.addAction(gear_icon_preferred(22), "Configuración")
         act_settings.triggered.connect(self._open_settings)
-        act_help = menu.addAction("Ayuda")
+        act_help = menu.addAction(help_icon_preferred(20), "Ayuda")
         act_help.triggered.connect(self._open_help)
         more_btn.setMenu(menu)
         topbar.addWidget(more_btn, 0, Qt.AlignRight)
@@ -2804,8 +2810,6 @@ class InversaMatrizWindow(_BaseMatrixWindow):
         self.result_box.insertPlainText("\nConclusión: La matriz es invertible porque:\n")
         for l in explain_cde(Aw):
             self.result_box.insertPlainText(l + "\n")
-
-
 
 
 

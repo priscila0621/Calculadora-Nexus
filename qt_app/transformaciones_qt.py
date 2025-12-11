@@ -1,10 +1,18 @@
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QGridLayout, QLineEdit, QTextEdit, QMessageBox, QTabWidget, QSpinBox
+    QGridLayout, QLineEdit, QTextEdit, QMessageBox, QTabWidget, QSpinBox,
+    QToolButton, QMenu
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QSize
 from fractions import Fraction
-from .theme import bind_font_scale_stylesheet
+from .theme import (
+    bind_font_scale_stylesheet,
+    bind_theme_icon,
+    make_overflow_icon,
+    gear_icon_preferred,
+    help_icon_preferred,
+)
+from .settings_qt import open_settings_dialog
 
 
 def _fmt(x: Fraction) -> str:
@@ -222,6 +230,28 @@ class TransformacionesWindow(QMainWindow):
         lay = QVBoxLayout(outer)
         lay.setContentsMargins(24, 24, 24, 24)
         lay.setSpacing(16)
+
+        topbar = QHBoxLayout()
+        topbar.setContentsMargins(0, 0, 0, 0)
+        topbar.addStretch(1)
+        more_btn = QToolButton()
+        more_btn.setAutoRaise(True)
+        more_btn.setCursor(Qt.PointingHandCursor)
+        more_btn.setToolTip("Más opciones")
+        more_btn.setPopupMode(QToolButton.InstantPopup)
+        try:
+            bind_theme_icon(more_btn, make_overflow_icon, 20)
+            more_btn.setIconSize(QSize(20, 20))
+        except Exception:
+            pass
+        menu = QMenu(more_btn)
+        act_settings = menu.addAction(gear_icon_preferred(22), "Configuración")
+        act_settings.triggered.connect(self._open_settings)
+        act_help = menu.addAction(help_icon_preferred(20), "Ayuda")
+        act_help.triggered.connect(self._open_help)
+        more_btn.setMenu(menu)
+        topbar.addWidget(more_btn, 0, Qt.AlignRight)
+        lay.addLayout(topbar)
 
         title = QLabel("Transformaciones lineales")
         title.setObjectName("Title")
@@ -645,3 +675,22 @@ class TransformacionesWindow(QMainWindow):
             self.out3.setPlainText("\n".join(lines))
         except Exception as exc:
             QMessageBox.warning(self, "Aviso", f"No se pudo comprobar: {exc}")
+
+    def _open_settings(self):
+        try:
+            open_settings_dialog(self)
+        except Exception:
+            pass
+
+    def _open_help(self):
+        text = (
+            "Transformaciones lineales T(x)=Ax:\n"
+            "- Usa cada pestaña según el flujo: T(x)=Ax, matriz desde base, comprobar linealidad o resolver Ax=b.\n"
+            "- Ajusta dimensiones con los controles superiores y presiona el botón de crear antes de llenar datos.\n"
+            "- Los resultados y pasos detallados aparecen en los paneles inferiores de cada pestaña.\n\n"
+            "El menú de tres puntos ofrece Configuración y esta Ayuda."
+        )
+        try:
+            QMessageBox.information(self, "Ayuda", text)
+        except Exception:
+            pass

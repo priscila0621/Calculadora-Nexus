@@ -39,6 +39,7 @@ from ..theme import (
     bind_theme_icon,
     make_overflow_icon,
     gear_icon_preferred,
+    help_icon_preferred,
 )
 from ..settings_qt import open_settings_dialog
 from ..text_utils import superscriptify
@@ -1219,6 +1220,8 @@ class MetodoBiseccionWindow(QMainWindow):
         menu = QMenu(more_btn)
         act_settings = menu.addAction(gear_icon_preferred(22), "Configuración")
         act_settings.triggered.connect(self._open_settings)
+        act_help = menu.addAction(help_icon_preferred(20), "Ayuda")
+        act_help.triggered.connect(self._open_help)
         more_btn.setMenu(menu)
         nav_layout.addWidget(more_btn, 0, Qt.AlignVCenter)
 
@@ -1337,6 +1340,18 @@ class MetodoBiseccionWindow(QMainWindow):
 
     def _open_settings(self):
         open_settings_dialog(self)
+
+    def _open_help(self):
+        text = (
+            "Ingresa f(x), intervalo [a,b] y tolerancia. Para la primera raíz puedes añadir un aproximado inicial.\n"
+            "El botón Calcular ejecuta bisección en cada intervalo; \"Limpiar formularios\" reinicia todos los campos.\n"
+            "Usa el selector de cantidad de raíces para evaluar varios intervalos con la misma función.\n\n"
+            "El menú de tres puntos incluye Configuración y esta Ayuda."
+        )
+        try:
+            QMessageBox.information(self, "Ayuda", text)
+        except Exception:
+            pass
 
     def _limpiar(self):
         for card in self.root_cards:
@@ -2156,4 +2171,3 @@ class MetodoBiseccionWindow(QMainWindow):
             self._refresh_plot_after_zoom((left, right), (bottom, top))
         except Exception:
             pass
-

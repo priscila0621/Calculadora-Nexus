@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QFrame,
     QToolButton,
     QMenu,
+    QMessageBox,
 )
 from PySide6.QtCore import Qt, QSize
 from .theme import (
@@ -21,6 +22,7 @@ from .theme import (
     bind_theme_icon,
     gear_icon_preferred,
     back_icon_preferred,
+    help_icon_preferred,
 )
 from .settings_qt import open_settings_dialog
 from .metodos.biseccion_qt import MetodoBiseccionWindow
@@ -61,6 +63,8 @@ class MenuNumericoPrincipalWindow(QMainWindow):
         gmenu = QMenu(more_btn_global)
         gact_settings = gmenu.addAction(gear_icon_preferred(22), "Configuración")
         gact_settings.triggered.connect(self._open_settings)
+        gact_help = gmenu.addAction(help_icon_preferred(20), "Ayuda")
+        gact_help.triggered.connect(self._open_help)
         more_btn_global.setMenu(gmenu)
         global_top.addWidget(more_btn_global)
         outer.addLayout(global_top)
@@ -266,6 +270,19 @@ class MenuNumericoPrincipalWindow(QMainWindow):
 
     def _open_settings(self):
         open_settings_dialog(self)
+
+    def _open_help(self):
+        text = (
+            "Panel lateral: abre cada m\u00f3dulo de m\u00e9todos num\u00e9ricos (Bisecci\u00f3n, "
+            "Falsa Posici\u00f3n, Newton-Raphson o Secante).\n"
+            "Esta vista solo presenta los accesos; el c\u00e1lculo se realiza en las ventanas individuales.\n\n"
+            "Tip: usa el men\u00fa de tres puntos para Configuraci\u00f3n y esta Ayuda. "
+            "Ctrl+D alterna el tema."
+        )
+        try:
+            QMessageBox.information(self, "Ayuda", text)
+        except Exception:
+            pass
 
     def _go_back(self):
         self.close()

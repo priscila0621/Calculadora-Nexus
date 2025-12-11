@@ -8,9 +8,16 @@ from PySide6.QtWidgets import (
     QFrame,
     QToolButton,
     QMenu,
+    QMessageBox,
 )
 from PySide6.QtCore import Qt, QSize
-from .theme import install_toggle_shortcut, bind_theme_icon, make_overflow_icon, gear_icon_preferred
+from .theme import (
+    install_toggle_shortcut,
+    bind_theme_icon,
+    make_overflow_icon,
+    gear_icon_preferred,
+    help_icon_preferred,
+)
 from .settings_qt import open_settings_dialog
 from .metodos.biseccion_qt import MetodoBiseccionWindow
 from .metodos.falsa_posicion_qt import MetodoFalsaPosicionWindow
@@ -81,6 +88,8 @@ class MenuMetodosNumericosWindow(QMainWindow):
         menu = QMenu(more_btn)
         act_settings = menu.addAction(gear_icon_preferred(22), "Configuración")
         act_settings.triggered.connect(self._open_settings)
+        act_help = menu.addAction(help_icon_preferred(20), "Ayuda")
+        act_help.triggered.connect(self._open_help)
         more_btn.setMenu(menu)
         top_layout.addWidget(more_btn, 0, Qt.AlignRight)
 
@@ -156,3 +165,14 @@ class MenuMetodosNumericosWindow(QMainWindow):
 
     def _open_settings(self):
         open_settings_dialog(self)
+
+    def _open_help(self):
+        text = (
+            "Barra superior: abre Bisección, Falsa Posición, Newton-Raphson o Secante.\n"
+            "Cada botón lanza la ventana específica con pasos guiados y reportes.\n\n"
+            "Tip: el menú de tres puntos incluye Configuración y esta Ayuda."
+        )
+        try:
+            QMessageBox.information(self, "Ayuda", text)
+        except Exception:
+            pass
