@@ -408,18 +408,31 @@ class MetodoSecanteWindow(bq.MetodoBiseccionWindow):
             QMessageBox.warning(self, "Aviso", f"Tolerancia invalida (primera raiz): {exc}")
             return
 
-        # 1) Construir lista de pares candidatos si no se ingresan manualmente.
+        # 1) Construir lista de pares candidatos. Si el usuario no ingresa x0/x1 en la primera,
+        # abrir el diálogo de intervalos para ajustar rango/paso como en Newton-Raphson.
         candidate_pairs: List[Tuple[float, float]] = []
-        try:
-            candidate_pairs = bq._detect_sign_change_intervals(func, -10.0, 10.0, 0.5)
-        except Exception:
-            candidate_pairs = []
-        if not candidate_pairs:
+        manual_intervals: List[Tuple[float, float]] = []
+        if not (a_txt and b_txt):
             try:
-                candidate_pairs = _suggest_pairs_without_sign_change(func, -10.0, 10.0, 0.5)
+                dlg = bq.IntervalsDialog(self, func, start=-10.0, end=10.0, step=0.5)
+                if dlg.exec() == QDialog.Accepted:
+                    manual_intervals = dlg.get_intervals()
+            except Exception:
+                manual_intervals = []
+
+        if manual_intervals:
+            candidate_pairs = _dedup_pairs_by_mid(manual_intervals)
+        else:
+            try:
+                candidate_pairs = bq._detect_sign_change_intervals(func, -10.0, 10.0, 0.5)
             except Exception:
                 candidate_pairs = []
-        candidate_pairs = _dedup_pairs_by_mid(candidate_pairs)
+            if not candidate_pairs:
+                try:
+                    candidate_pairs = _suggest_pairs_without_sign_change(func, -10.0, 10.0, 0.5)
+                except Exception:
+                    candidate_pairs = []
+            candidate_pairs = _dedup_pairs_by_mid(candidate_pairs)
 
         # Si el usuario no ingresó pares manualmente, ampliar automáticamente
         # la cantidad de tarjetas para cubrir todos los candidatos detectados.

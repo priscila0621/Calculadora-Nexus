@@ -1362,6 +1362,60 @@ class RootInputCard(QFrame):
             """
         )
 
+    def _apply_theme(self, *_args):
+        """Aplica estilos claros/oscuro al contenedor de entradas."""
+        mode = current_mode(QApplication.instance())
+        if mode == "dark":
+            bg = "#26202b"
+            border = "#3c3443"
+            text = "#f7f4f1"
+            field_bg = "#1f1b24"
+            field_border = "#514458"
+            placeholder = "#cbb7d0"
+        else:
+            bg = "rgba(255, 255, 255, 0.94)"
+            border = "#d9c8c5"
+            text = "#2b1b26"
+            field_bg = "#ffffff"
+            field_border = "#c8b6c8"
+            placeholder = "#7a6b76"
+
+        self.setStyleSheet(
+            f"""
+            QFrame#InnerCard {{
+                background-color: {bg};
+                border: 1px solid {border};
+                border-radius: 16px;
+            }}
+            QFrame#InnerCard QLabel {{
+                color: {text};
+            }}
+            QFrame#InnerCard QLabel#Subtitle {{
+                color: {text};
+                font-weight: 700;
+            }}
+            QFrame#InnerCard QLineEdit, QFrame#InnerCard QComboBox {{
+                background: {field_bg};
+                border: 1px solid {field_border};
+                border-radius: 10px;
+                padding: 8px 10px;
+                color: {text};
+                selection-background-color: #b07a8c;
+                selection-color: #ffffff;
+            }}
+            QFrame#InnerCard QLineEdit:focus, QFrame#InnerCard QComboBox:focus {{
+                border: 1px solid #b07a8c;
+            }}
+            QFrame#InnerCard QLineEdit::placeholder, QFrame#InnerCard QComboBox::placeholder {{
+                color: {placeholder};
+            }}
+            QFrame#InnerCard QComboBox QListView {{
+                background: {field_bg};
+                color: {text};
+            }}
+            """
+        )
+
 
 class MetodoBiseccionWindow(QMainWindow):
     def __init__(self, parent=None):
@@ -1598,6 +1652,10 @@ class MetodoBiseccionWindow(QMainWindow):
                 pass
         try:
             self._restyle_results_cards(mode)
+        except Exception:
+            pass
+        try:
+            self._apply_plot_theme()
         except Exception:
             pass
 
@@ -2237,9 +2295,14 @@ class MetodoBiseccionWindow(QMainWindow):
         self._mpl['ax'].set_ylabel("Eje Y")
         self.plot_container_layout.addWidget(self._mpl['toolbar'])
         self.plot_container_layout.addWidget(self._mpl['canvas'], 1)
+        self._apply_plot_theme()
         try:
             # Zoom con rueda del ratón sobre la gráfica
             self._mpl['cid_scroll'] = self._mpl['canvas'].mpl_connect('scroll_event', self._on_canvas_scroll)
+        except Exception:
+            pass
+        try:
+            self._apply_plot_theme()
         except Exception:
             pass
 
@@ -2269,6 +2332,53 @@ class MetodoBiseccionWindow(QMainWindow):
         if np is not None:
             return np.linspace(x_min, x_max, num_points)
         return [x_min + (x_max - x_min) * i / (num_points - 1) for i in range(num_points)]
+
+    def _apply_plot_theme(self):
+        if not getattr(self, "_mpl_ready", False):
+            return
+        try:
+            mode = current_mode(QApplication.instance())
+        except Exception:
+            mode = "light"
+        fig = self._mpl.get("fig")
+        ax = self._mpl.get("ax")
+        toolbar = self._mpl.get("toolbar")
+        if fig is None or ax is None:
+            return
+        if mode == "dark":
+            fig.patch.set_facecolor("#1b161f")
+            ax.set_facecolor("#201a24")
+            ax.tick_params(colors="#f7f4f1", labelcolor="#f7f4f1")
+            for spine in ax.spines.values():
+                spine.set_color("#6b5c70")
+            ax.xaxis.label.set_color("#f7f4f1")
+            ax.yaxis.label.set_color("#f7f4f1")
+            ax.title.set_color("#f7f4f1")
+            ax.grid(color="#3d3242", linestyle="--", alpha=0.45)
+            if toolbar is not None:
+                toolbar.setStyleSheet(
+                    "QToolBar { background: #1b161f; border: none; padding: 4px; }"
+                )
+        else:
+            fig.patch.set_facecolor("#ffffff")
+            ax.set_facecolor("#ffffff")
+            ax.tick_params(colors="#1f1f1f", labelcolor="#1f1f1f")
+            for spine in ax.spines.values():
+                spine.set_color("#222222")
+            ax.xaxis.label.set_color("#1f1f1f")
+            ax.yaxis.label.set_color("#1f1f1f")
+            ax.title.set_color("#1f1f1f")
+            ax.grid(color="#cccccc", linestyle="--", alpha=0.4)
+            if toolbar is not None:
+                toolbar.setStyleSheet("")
+        try:
+            fig.tight_layout()
+        except Exception:
+            pass
+        try:
+            fig.canvas.draw_idle()
+        except Exception:
+            pass
 
     def _redraw_live_with_range(self, xlim: Tuple[float, float], ylim: Tuple[float, float] | None = None) -> None:
         if not getattr(self, '_mpl_ready', False):
