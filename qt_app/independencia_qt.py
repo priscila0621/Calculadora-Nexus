@@ -37,6 +37,14 @@ class IndependenciaWindow(QMainWindow):
         self.btn_crear = QPushButton("Crear cuadrícula")
         self.btn_crear.clicked.connect(self._rebuild)
         cfg.addSpacing(16); cfg.addWidget(self.btn_crear)
+        # Botón para limpiar pantalla al lado de las herramientas superiores
+        self.btn_limpiar = QPushButton("Limpiar")
+        try:
+            self.btn_limpiar.setToolTip("Limpiar entradas y resultados")
+        except Exception:
+            pass
+        self.btn_limpiar.clicked.connect(self._limpiar)
+        cfg.addSpacing(8); cfg.addWidget(self.btn_limpiar)
         cfg.addStretch(1)
 
         self.scroll = QScrollArea(); self.scroll.setWidgetResizable(True)
@@ -174,4 +182,32 @@ class IndependenciaWindow(QMainWindow):
             self.out.insertPlainText("\n".join(header_lines) + "\n\n" + texto)
         except Exception as exc:
             QMessageBox.warning(self, "Aviso", f"No se pudo verificar: {exc}")
+
+    def _limpiar(self):
+        # Limpiar resultados
+        try:
+            self.out.clear()
+        except Exception:
+            pass
+        try:
+            self.status_label.setVisible(False)
+            self.status_label.setText("")
+        except Exception:
+            pass
+        # Limpiar entradas
+        try:
+            for row in getattr(self, 'entries', []):
+                for e in row:
+                    try:
+                        e.clear()
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+        # Foco a filas
+        try:
+            self.f_edit.setFocus()
+            self.f_edit.selectAll()
+        except Exception:
+            pass
 
