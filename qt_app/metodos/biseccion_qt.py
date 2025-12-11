@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Callable, List, Tuple
 
 from PySide6.QtWidgets import (
+    QApplication,
     QMainWindow,
     QWidget,
     QVBoxLayout,
@@ -40,6 +41,8 @@ from ..theme import (
     make_overflow_icon,
     gear_icon_preferred,
     help_icon_preferred,
+    current_mode,
+    theme_changed_signal,
 )
 from ..settings_qt import open_settings_dialog
 from ..text_utils import superscriptify
@@ -283,6 +286,168 @@ class ExponentInputFilter(QObject):
             self.edit.setCursorPosition(pos + len(s))
         except Exception:
             pass
+
+    def _apply_theme(self, *_args):
+        """Aplica estilos claros/oscuro al contenedor de entradas."""
+        mode = current_mode(QApplication.instance())
+        if mode == "dark":
+            bg = "#26202b"
+            border = "#3c3443"
+            text = "#f7f4f1"
+            field_bg = "#1f1b24"
+            field_border = "#514458"
+            placeholder = "#cbb7d0"
+        else:
+            bg = "rgba(255, 255, 255, 0.94)"
+            border = "#d9c8c5"
+            text = "#2b1b26"
+            field_bg = "#ffffff"
+            field_border = "#c8b6c8"
+            placeholder = "#7a6b76"
+
+        self.setStyleSheet(
+            f"""
+            QFrame#InnerCard {{
+                background-color: {bg};
+                border: 1px solid {border};
+                border-radius: 16px;
+            }}
+            QFrame#InnerCard QLabel {{
+                color: {text};
+            }}
+            QFrame#InnerCard QLabel#Subtitle {{
+                color: {text};
+                font-weight: 700;
+            }}
+            QFrame#InnerCard QLineEdit, QFrame#InnerCard QComboBox {{
+                background: {field_bg};
+                border: 1px solid {field_border};
+                border-radius: 10px;
+                padding: 8px 10px;
+                color: {text};
+                selection-background-color: #b07a8c;
+                selection-color: #ffffff;
+            }}
+            QFrame#InnerCard QLineEdit:focus, QFrame#InnerCard QComboBox:focus {{
+                border: 1px solid #b07a8c;
+            }}
+            QFrame#InnerCard QLineEdit::placeholder, QFrame#InnerCard QComboBox::placeholder {{
+                color: {placeholder};
+            }}
+            QFrame#InnerCard QComboBox QListView {{
+                background: {field_bg};
+                color: {text};
+            }}
+            """
+        )
+
+    def _apply_theme(self, *_args):
+        """Aplica estilos claros/oscuro al contenedor de entradas."""
+        mode = current_mode(QApplication.instance())
+        if mode == "dark":
+            bg = "#26202b"
+            border = "#3c3443"
+            text = "#f7f4f1"
+            field_bg = "#1f1b24"
+            field_border = "#514458"
+            placeholder = "#cbb7d0"
+        else:
+            bg = "rgba(255, 255, 255, 0.94)"
+            border = "#d9c8c5"
+            text = "#2b1b26"
+            field_bg = "#ffffff"
+            field_border = "#c8b6c8"
+            placeholder = "#7a6b76"
+
+        self.setStyleSheet(
+            f"""
+            QFrame#InnerCard {{
+                background-color: {bg};
+                border: 1px solid {border};
+                border-radius: 16px;
+            }}
+            QFrame#InnerCard QLabel {{
+                color: {text};
+            }}
+            QFrame#InnerCard QLabel#Subtitle {{
+                color: {text};
+                font-weight: 700;
+            }}
+            QFrame#InnerCard QLineEdit, QFrame#InnerCard QComboBox {{
+                background: {field_bg};
+                border: 1px solid {field_border};
+                border-radius: 10px;
+                padding: 8px 10px;
+                color: {text};
+                selection-background-color: #b07a8c;
+                selection-color: #ffffff;
+            }}
+            QFrame#InnerCard QLineEdit:focus, QFrame#InnerCard QComboBox:focus {{
+                border: 1px solid #b07a8c;
+            }}
+            QFrame#InnerCard QLineEdit::placeholder, QFrame#InnerCard QComboBox::placeholder {{
+                color: {placeholder};
+            }}
+            QFrame#InnerCard QComboBox QListView {{
+                background: {field_bg};
+                color: {text};
+            }}
+            """
+        )
+
+    def _apply_theme(self, *_args):
+        """Aplica estilos claros/oscuro al contenedor de entradas."""
+        mode = current_mode(QApplication.instance())
+        if mode == "dark":
+            bg = "#26202b"
+            border = "#3c3443"
+            text = "#f7f4f1"
+            field_bg = "#1f1b24"
+            field_border = "#514458"
+            placeholder = "#cbb7d0"
+        else:
+            bg = "rgba(255, 255, 255, 0.94)"
+            border = "#d9c8c5"
+            text = "#2b1b26"
+            field_bg = "#ffffff"
+            field_border = "#c8b6c8"
+            placeholder = "#7a6b76"
+
+        self.setStyleSheet(
+            f"""
+            QFrame#InnerCard {{
+                background-color: {bg};
+                border: 1px solid {border};
+                border-radius: 16px;
+            }}
+            QFrame#InnerCard QLabel {{
+                color: {text};
+            }}
+            QFrame#InnerCard QLabel#Subtitle {{
+                color: {text};
+                font-weight: 700;
+            }}
+            QFrame#InnerCard QLineEdit, QFrame#InnerCard QComboBox {{
+                background: {field_bg};
+                border: 1px solid {field_border};
+                border-radius: 10px;
+                padding: 8px 10px;
+                color: {text};
+                selection-background-color: #b07a8c;
+                selection-color: #ffffff;
+            }}
+            QFrame#InnerCard QLineEdit:focus, QFrame#InnerCard QComboBox:focus {{
+                border: 1px solid #b07a8c;
+            }}
+            QFrame#InnerCard QLineEdit::placeholder, QFrame#InnerCard QComboBox::placeholder {{
+                color: {placeholder};
+            }}
+            QFrame#InnerCard QComboBox QListView {{
+                background: {field_bg};
+                color: {text};
+            }}
+            """
+        )
 
 
 def _format_number(value: float) -> str:
@@ -823,14 +988,11 @@ class RootInputCard(QFrame):
     def __init__(self, index: int):
         super().__init__()
         self.setObjectName("InnerCard")
-        self.setStyleSheet(
-            """
-            QFrame#InnerCard {
-                background-color: rgba(255, 255, 255, 0.82);
-                border-radius: 16px;
-            }
-            """
-        )
+        self._apply_theme()
+        try:
+            theme_changed_signal().connect(self._apply_theme)
+        except Exception:
+            pass
         layout = QVBoxLayout(self)
         layout.setContentsMargins(18, 18, 18, 18)
         layout.setSpacing(12)
@@ -1146,6 +1308,60 @@ class RootInputCard(QFrame):
             self.approx_edit.text().strip(),
         )
 
+    def _apply_theme(self, *_args):
+        """Aplica estilos claros/oscuro al contenedor de entradas."""
+        mode = current_mode(QApplication.instance())
+        if mode == "dark":
+            bg = "#26202b"
+            border = "#3c3443"
+            text = "#f7f4f1"
+            field_bg = "#1f1b24"
+            field_border = "#514458"
+            placeholder = "#cbb7d0"
+        else:
+            bg = "rgba(255, 255, 255, 0.94)"
+            border = "#d9c8c5"
+            text = "#2b1b26"
+            field_bg = "#ffffff"
+            field_border = "#c8b6c8"
+            placeholder = "#7a6b76"
+
+        self.setStyleSheet(
+            f"""
+            QFrame#InnerCard {{
+                background-color: {bg};
+                border: 1px solid {border};
+                border-radius: 16px;
+            }}
+            QFrame#InnerCard QLabel {{
+                color: {text};
+            }}
+            QFrame#InnerCard QLabel#Subtitle {{
+                color: {text};
+                font-weight: 700;
+            }}
+            QFrame#InnerCard QLineEdit, QFrame#InnerCard QComboBox {{
+                background: {field_bg};
+                border: 1px solid {field_border};
+                border-radius: 10px;
+                padding: 8px 10px;
+                color: {text};
+                selection-background-color: #b07a8c;
+                selection-color: #ffffff;
+            }}
+            QFrame#InnerCard QLineEdit:focus, QFrame#InnerCard QComboBox:focus {{
+                border: 1px solid #b07a8c;
+            }}
+            QFrame#InnerCard QLineEdit::placeholder, QFrame#InnerCard QComboBox::placeholder {{
+                color: {placeholder};
+            }}
+            QFrame#InnerCard QComboBox QListView {{
+                background: {field_bg};
+                color: {text};
+            }}
+            """
+        )
+
 
 class MetodoBiseccionWindow(QMainWindow):
     def __init__(self, parent=None):
@@ -1229,6 +1445,7 @@ class MetodoBiseccionWindow(QMainWindow):
 
         card = QFrame()
         card.setObjectName("Card")
+        self.form_card = card
         card_layout = QVBoxLayout(card)
         card_layout.setContentsMargins(32, 28, 32, 28)
         card_layout.setSpacing(18)
@@ -1326,6 +1543,12 @@ class MetodoBiseccionWindow(QMainWindow):
         except Exception:
             pass
 
+        self._apply_theme_styles()
+        try:
+            theme_changed_signal().connect(self._apply_theme_styles)
+        except Exception:
+            pass
+
         install_toggle_shortcut(self)
 
     def _go_back(self):
@@ -1350,6 +1573,31 @@ class MetodoBiseccionWindow(QMainWindow):
         )
         try:
             QMessageBox.information(self, "Ayuda", text)
+        except Exception:
+            pass
+
+    def _apply_theme_styles(self, *_args):
+        mode = current_mode(QApplication.instance())
+        card_style = (
+            """
+            QFrame#Card {
+                background: #1f1b24;
+                border: 1px solid #3a3042;
+                border-radius: 18px;
+            }
+            QFrame#Card QLabel { color: #f7f4f1; }
+            """
+            if mode == "dark"
+            else ""
+        )
+        for frame in (getattr(self, "form_card", None), getattr(self, "plot_card", None)):
+            try:
+                if frame is not None:
+                    frame.setStyleSheet(card_style)
+            except Exception:
+                pass
+        try:
+            self._restyle_results_cards(mode)
         except Exception:
             pass
 
@@ -1616,9 +1864,50 @@ class MetodoBiseccionWindow(QMainWindow):
             if widget:
                 widget.setParent(None)
 
+        mode = current_mode(QApplication.instance())
+        card_style = (
+            """
+            QFrame#Card {
+                background: #1f1b24;
+                border: 1px solid #3a3042;
+                border-radius: 18px;
+            }
+            QFrame#Card QLabel { color: #f7f4f1; }
+            """
+            if mode == "dark"
+            else ""
+        )
+        summary_tpl = (
+            """
+            QLabel {{
+                background-color: #2c2431;
+                border: 1px solid #4a3f52;
+                border-radius: 14px;
+                padding: 18px;
+                color: #f7f4f1;
+                font-size: {body}px;
+                font-weight: 600;
+                line-height: 150%;
+            }}
+            """
+            if mode == "dark"
+            else """
+            QLabel {{
+                background-color: rgba(176, 122, 140, 0.18);
+                border-radius: 14px;
+                padding: 18px;
+                color: #6E4B5E;
+                font-size: {body}px;
+                font-weight: 600;
+                line-height: 150%;
+            }}
+            """
+        )
+
         for idx, expr, pasos, raiz, fc, iteraciones, approx_value in resultados:
             card = QFrame()
             card.setObjectName("Card")
+            card.setStyleSheet(card_style)
             layout = QVBoxLayout(card)
             layout.setContentsMargins(28, 24, 28, 24)
             layout.setSpacing(18)
@@ -1678,26 +1967,14 @@ class MetodoBiseccionWindow(QMainWindow):
                     f"Comparación con tu valor aproximado {approx_txt}: diferencia = {diff_txt}."
                 )
             summary = QLabel("\n".join(summary_lines))
+            summary.setObjectName("ResultSummary")
             summary.setWordWrap(True)
             summary.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-            bind_font_scale_stylesheet(
-                summary,
-                """
-                QLabel {{
-                    background-color: rgba(176, 122, 140, 0.18);
-                    border-radius: 14px;
-                    padding: 18px;
-                    color: #6E4B5E;
-                    font-size: {body}px;
-                    font-weight: 600;
-                    line-height: 150%;
-                }}
-                """,
-                body=18,
-            )
+            bind_font_scale_stylesheet(summary, summary_tpl, body=18)
             layout.addWidget(summary)
 
             table = self._create_table_widget(pasos)
+            self._style_table_for_theme(table, mode)
             layout.addWidget(table)
 
             # Botón reemplazado por icono en la fila del título
@@ -1709,6 +1986,92 @@ class MetodoBiseccionWindow(QMainWindow):
         self.results_layout.addWidget(spacer)
 
 
+    def _style_table_for_theme(self, table: QTableWidget, mode: str):
+        if mode == "dark":
+            table.setStyleSheet(
+                """
+                QTableWidget {
+                    background: #1f1b24;
+                    alternate-background-color: #241f2a;
+                    color: #f7f4f1;
+                    gridline-color: #3d3242;
+                    border: 1px solid #3d3242;
+                }
+                QHeaderView::section {
+                    background: #2c2431;
+                    color: #f7f4f1;
+                    border: 1px solid #3d3242;
+                    padding: 6px;
+                }
+                QTableWidget::item:selected {
+                    background: #b07a8c;
+                    color: #ffffff;
+                }
+                """
+            )
+        else:
+            table.setStyleSheet("")
+
+    def _restyle_results_cards(self, mode: str | None = None):
+        mode = mode or current_mode(QApplication.instance())
+        card_style = (
+            """
+            QFrame#Card {
+                background: #1f1b24;
+                border: 1px solid #3a3042;
+                border-radius: 18px;
+            }
+            QFrame#Card QLabel { color: #f7f4f1; }
+            """
+            if mode == "dark"
+            else ""
+        )
+        summary_tpl = (
+            """
+            QLabel {{
+                background-color: #2c2431;
+                border: 1px solid #4a3f52;
+                border-radius: 14px;
+                padding: 18px;
+                color: #f7f4f1;
+                font-size: {body}px;
+                font-weight: 600;
+                line-height: 150%;
+            }}
+            """
+            if mode == "dark"
+            else """
+            QLabel {{
+                background-color: rgba(176, 122, 140, 0.18);
+                border-radius: 14px;
+                padding: 18px;
+                color: #6E4B5E;
+                font-size: {body}px;
+                font-weight: 600;
+                line-height: 150%;
+            }}
+            """
+        )
+        placeholder_tpl = (
+            "color:#cbb7d0;font-size:{body}px;font-style:italic;"
+            if mode == "dark"
+            else "color:#8F7A87;font-size:{body}px;font-style:italic;"
+        )
+
+        for i in range(self.results_layout.count()):
+            item = self.results_layout.itemAt(i)
+            w = item.widget()
+            if isinstance(w, QFrame) and w.objectName() == "Card":
+                w.setStyleSheet(card_style)
+                for lbl in w.findChildren(QLabel):
+                    if lbl.objectName() == "ResultSummary":
+                        bind_font_scale_stylesheet(lbl, summary_tpl, body=18)
+                for table in w.findChildren(QTableWidget):
+                    self._style_table_for_theme(table, mode)
+            elif isinstance(w, QLabel) and w.objectName() == "ResultsPlaceholder":
+                bind_font_scale_stylesheet(w, placeholder_tpl, body=16)
+
+
     def _show_empty_results(self):
         for i in reversed(range(self.results_layout.count())):
             item = self.results_layout.itemAt(i)
@@ -1718,12 +2081,15 @@ class MetodoBiseccionWindow(QMainWindow):
         placeholder = QLabel(
             "Los resultados aparecerán aquí una vez que ejecutes el método."
         )
+        placeholder.setObjectName("ResultsPlaceholder")
         placeholder.setAlignment(Qt.AlignCenter)
-        bind_font_scale_stylesheet(
-            placeholder,
-            "color:#8F7A87;font-size:{body}px;font-style:italic;",
-            body=16,
+        mode = current_mode(QApplication.instance())
+        placeholder_tpl = (
+            "color:#cbb7d0;font-size:{body}px;font-style:italic;"
+            if mode == "dark"
+            else "color:#8F7A87;font-size:{body}px;font-style:italic;"
         )
+        bind_font_scale_stylesheet(placeholder, placeholder_tpl, body=16)
         self.results_layout.addWidget(placeholder)
 
     def _plot_resultados(self, resultados):
