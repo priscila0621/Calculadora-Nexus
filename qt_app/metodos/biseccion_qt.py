@@ -2460,15 +2460,15 @@ class MetodoBiseccionWindow(QMainWindow):
                     y = float('nan')
                 ys.append(y)
             color = colors[i % len(colors)] if colors else None
-            ax.plot(xs, ys, label=f"f(x) #{idx}", color=color, linewidth=1.6, alpha=0.9)
+            ax.plot(xs, ys, label=f"f(x) #{idx}", color=color, linewidth=1.6, alpha=0.9, zorder=1)
             if pasos:
                 a0 = pasos[0].a
                 b0 = pasos[0].b
-                ax.axvspan(min(a0, b0), max(a0, b0), alpha=0.08, color=color)
+                ax.axvspan(min(a0, b0), max(a0, b0), alpha=0.08, color=color, zorder=0)
             try:
                 rx = float(raiz)
                 marker = markers[i % len(markers)]
-                ax.plot(rx, 0.0, marker=marker, color=color, markersize=10, label=f"Raíz {i+1}")
+                ax.plot(rx, 0.0, marker=marker, color=color, markersize=10, label=f"Raíz {i+1}", zorder=5)
             except Exception:
                 pass
 
@@ -2590,6 +2590,7 @@ class MetodoBiseccionWindow(QMainWindow):
             xs = [x_min + (x_max - x_min) * i / (num_points - 1) for i in range(num_points)]
         colors = plt.rcParams.get("axes.prop_cycle").by_key().get("color", [])
         markers = ["o", "s", "^", "D", "v", "P", "X", "*", "+", "x"]
+        root_points = []
         for i, (idx, expr, pasos, raiz, fc, iteraciones, approx_value) in enumerate(resultados):
             try:
                 func = _compile_function(expr)
@@ -2603,17 +2604,30 @@ class MetodoBiseccionWindow(QMainWindow):
                     y = float('nan')
                 ys.append(y)
             color = colors[i % len(colors)] if colors else None
-            ax.plot(xs, ys, label=f"f(x) #{idx}", color=color, linewidth=1.6, alpha=0.9)
+            ax.plot(xs, ys, label=f"f(x) #{idx}", color=color, linewidth=1.6, alpha=0.9, zorder=1)
             if pasos:
                 a0 = pasos[0].a
                 b0 = pasos[0].b
-                ax.axvspan(min(a0, b0), max(a0, b0), alpha=0.08, color=color)
+                ax.axvspan(min(a0, b0), max(a0, b0), alpha=0.08, color=color, zorder=0)
             try:
                 rx = float(raiz)
                 marker = markers[i % len(markers)]
-                ax.plot(rx, 0.0, marker=marker, color=color, markersize=10, label=f"Raíz {i+1}")
+                root_points.append((rx, color, marker, i))
             except Exception:
                 pass
+        # Dibujar marcadores de raíces al final para que queden encima de las curvas
+        for rx, color, marker, idx in root_points:
+            ax.scatter(
+                [rx],
+                [0.0],
+                color=color or "#b91c1c",
+                marker=marker,
+                s=90,
+                zorder=10,
+                edgecolors="black",
+                linewidths=0.6,
+                label=f"Raíz {idx+1}",
+            )
         ax.set_xlim(x_min, x_max)
         ax.legend()
         ax.set_title("Resultados de bisección")
