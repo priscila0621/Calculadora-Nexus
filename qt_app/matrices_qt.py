@@ -83,6 +83,15 @@ class _BaseMatrixWindow(QMainWindow):
         self.btn_crear.clicked.connect(self._crear)
         top.addSpacing(16)
         top.addWidget(self.btn_crear)
+        # Botón de limpiar pantalla (visible en todas las vistas hijas)
+        self.btn_limpiar = QPushButton("Limpiar")
+        try:
+            self.btn_limpiar.setToolTip("Limpiar pantalla")
+        except Exception:
+            pass
+        self.btn_limpiar.clicked.connect(self._limpiar_pantalla)
+        top.addSpacing(8)
+        top.addWidget(self.btn_limpiar)
         top.addStretch(1)
 
         self.scroll = QScrollArea(); self.scroll.setWidgetResizable(True)
@@ -362,6 +371,102 @@ class _BaseMatrixWindow(QMainWindow):
 
     def _run(self):
         raise NotImplementedError
+
+    def _limpiar_pantalla(self):
+        """Limpia entradas, resultados y vistas auxiliares sin alterar otra lógica."""
+        # 1) Limpiar resultados textuales
+        try:
+            self.result_box.clear()
+        except Exception:
+            pass
+        # 2) Limpiar contenedor de matriz resultante
+        try:
+            for i in reversed(range(self.result_matrix_layout.count())):
+                w = self.result_matrix_layout.itemAt(i).widget()
+                if w:
+                    w.setParent(None)
+            self._last_result_matrix = None
+        except Exception:
+            pass
+        # 3) Limpiar entradas (maneja listas anidadas de QLineEdit)
+        try:
+            def clear_entries(obj):
+                if obj is None:
+                    return
+                if isinstance(obj, list):
+                    for it in obj:
+                        clear_entries(it)
+                else:
+                    try:
+                        # Si es QLineEdit
+                        obj.clear()
+                    except Exception:
+                        pass
+            clear_entries(getattr(self, 'entries', None))
+        except Exception:
+            pass
+        # 4) Limpiar entradas avanzadas usadas en Transpuesta (vector/matriz B, expresión)
+        try:
+            if hasattr(self, 'vector_entries') and self.vector_entries:
+                for row in self.vector_entries:
+                    for e in (row or []):
+                        try:
+                            e.clear()
+                        except Exception:
+                            pass
+            if hasattr(self, 'expr_edit') and self.expr_edit is not None:
+                self.expr_edit.clear()
+        except Exception:
+            pass
+        # 5) Resetear estados propios de ventanas específicas de manera segura
+        for name in ('_last_sum_result', '_last_result', '_op_mode'):
+            try:
+                setattr(self, name, None)
+            except Exception:
+                pass
+        try:
+            if hasattr(self, 'trans_inv_btn') and self.trans_inv_btn is not None:
+                self.trans_inv_btn.setEnabled(False)
+        except Exception:
+            pass
+        try:
+            if hasattr(self, 'op_label') and self.op_label is not None:
+                self.op_label.setText("Operacion: Multiplicacion (A x B)")
+        except Exception:
+            pass
+        try:
+            # Inversa: limpiar panel visual
+            if hasattr(self, 'visual_frame') and self.visual_frame is not None:
+                lay = self.visual_frame.layout()
+                if lay is not None:
+                    for i in reversed(range(lay.count())):
+                        w = lay.itemAt(i).widget()
+                        if w:
+                            w.setParent(None)
+        except Exception:
+            pass
+        try:
+            # Determinante: badge principal
+            if hasattr(self, 'det_badge') and self.det_badge is not None:
+                self.det_badge.setText("Determinante = -")
+        except Exception:
+            pass
+        try:
+            # Deshabilitar botones de encadenado en multiplicación si existen
+            if hasattr(self, '_chain_btn') and self._chain_btn is not None:
+                self._chain_btn.setEnabled(False)
+            if hasattr(self, '_chain_add_btn') and self._chain_add_btn is not None:
+                self._chain_add_btn.setEnabled(False)
+            if hasattr(self, '_chain_sub_btn') and self._chain_sub_btn is not None:
+                self._chain_sub_btn.setEnabled(False)
+        except Exception:
+            pass
+        # 6) UX: llevar foco a filas para seguir trabajando
+        try:
+            self.f_edit.setFocus()
+            self.f_edit.selectAll()
+        except Exception:
+            pass
 
 
 class SumaMatricesWindow(_BaseMatrixWindow):
